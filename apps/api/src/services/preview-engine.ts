@@ -4,12 +4,42 @@ import type {
   PreviewFile,
   PreviewMetrics,
 } from '@platform/shared-types';
+import { sandboxManager } from './sandbox-manager.js';
+import type { SandboxConfig } from './sandbox/types.js';
 
 const sessions = new Map<string, PreviewSession>();
 
 function generateId(): string {
   return crypto.randomUUID();
 }
+
+const FRAMEWORK_BUILD_COMMANDS: Record<string, { command: string; args: string[]; install: string[] }> = {
+  nextjs: {
+    command: 'npx',
+    args: ['next', 'build'],
+    install: ['npm', 'install'],
+  },
+  vite: {
+    command: 'npx',
+    args: ['vite', 'build'],
+    install: ['npm', 'install'],
+  },
+  astro: {
+    command: 'npx',
+    args: ['astro', 'build'],
+    install: ['npm', 'install'],
+  },
+  express: {
+    command: 'npm',
+    args: ['run', 'build'],
+    install: ['npm', 'install'],
+  },
+  static: {
+    command: 'cp',
+    args: ['-r', '.', '/output'],
+    install: [],
+  },
+};
 
 const FRAMEWORK_PORTS: Record<string, number> = {
   nextjs: 3000,
@@ -21,6 +51,11 @@ const FRAMEWORK_PORTS: Record<string, number> = {
 
 class PreviewEngine {
   private buildTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private useSandbox = false;
+
+  setUseSandbox(value: boolean): void {
+    this.useSandbox = value;
+  }
 
   createSession(params: {
     projectId: string;
@@ -51,7 +86,12 @@ class PreviewEngine {
     };
 
     sessions.set(id, session);
-    this.simulateBuild(session.id);
+
+    if (this.useSandbox && sandboxManager) {
+      this.startSandboxBuild(session);
+    } else {
+      this.simulateBuild(session.id);
+    }
 
     return session;
   }
@@ -85,12 +125,11 @@ class PreviewEngine {
         s.status = 'running';
         this.addLog(sessionId, 'info', `Preview ready at ${s.url}`, 'system');
 
-        const warnings = ['warn', 'error'] as const;
         const randomIssue = Math.random();
         if (randomIssue < 0.3) {
           this.addLog(
             sessionId,
-            warnings[randomIssue < 0.15 ? 0 : 1],
+            randomIssue < 0.15 ? 'warn' : 'error',
             randomIssue < 0.15
               ? 'Deprecated API usage detected in src/components/Layout.tsx'
               : 'Module not found: ./styles/global.css',
@@ -101,6 +140,76 @@ class PreviewEngine {
       this.buildTimers.delete(`${sessionId}:final`);
     }, 3500);
     this.buildTimers.set(`${sessionId}:final`, finalTimer);
+  }
+
+  private async startSandboxBuild(session: PreviewSession): Promise<void> {
+    const buildCfg = FRAMEWORK_BUILD_COMMANDS[session.framework] ?? FRAMEWORK_BUILD_COMMANDS.nextjs!;
+
+    session.status = 'building';
+    this.addLog(session.id, 'info', `Starting sandboxed build for ${session.framework}`, 'system');
+
+    const sandboxConfig: Partial<SandboxConfig> = {
+      backend: 'process',
+      memoryLimitMb: 512,
+      timeoutMs: 120000,
+      networkAccess: false,
+    };
+
+    const sandboxFiles = session.files.map((f) => ({
+      path: f.path,
+      content: f.content,
+    }));
+
+    try {
+      if (buildCfg.install.length > 0) {
+        const installResult = await sandboxManager.execute({
+          command: buildCfg.install[0]!,
+          args: buildCfg.install.slice(1),
+          workingDirectory: '/workspace',
+          files: sandboxFiles,
+          config: sandboxConfig,
+        });
+
+        for (const line of installResult.stdout.split('\n').filter(Boolean)) {
+          this.addLog(session.id, 'info', line, 'build');
+        }
+
+        if (installResult.exitCode !== 0) {
+          session.status = 'error';
+          this.addLog(session.id, 'error', `Install failed (exit ${installResult.exitCode})`, 'build');
+          return;
+        }
+
+        this.addLog(session.id, 'info', `Dependencies installed (${installResult.durationMs}ms)`, 'build');
+      }
+
+      const buildResult = await sandboxManager.execute({
+        command: buildCfg.command,
+        args: buildCfg.args,
+        workingDirectory: '/workspace',
+        files: sandboxFiles,
+        config: { ...sandboxConfig, timeoutMs: 180000 },
+      });
+
+      for (const line of buildResult.stdout.split('\n').filter(Boolean)) {
+        this.addLog(session.id, 'info', line, 'build');
+      }
+      for (const line of buildResult.stderr.split('\n').filter(Boolean)) {
+        this.addLog(session.id, buildResult.exitCode === 0 ? 'warn' : 'error', line, 'build');
+      }
+
+      if (buildResult.exitCode === 0) {
+        session.status = 'running';
+        this.addLog(session.id, 'info', `Build succeeded (${buildResult.durationMs}ms, peak ${buildResult.peakMemoryMb}MB)`, 'system');
+        this.addLog(session.id, 'info', `Preview ready at ${session.url}`, 'system');
+      } else {
+        session.status = 'error';
+        this.addLog(session.id, 'error', `Build failed (exit ${buildResult.exitCode})`, 'build');
+      }
+    } catch (err) {
+      session.status = 'error';
+      this.addLog(session.id, 'error', `Sandbox error: ${(err as Error).message}`, 'system');
+    }
   }
 
   private addLog(
