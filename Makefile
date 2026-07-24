@@ -50,3 +50,14 @@ deploy-api:
 deploy-web:
 	railway service -n web
 	railway up --detach --service web
+
+integration-test-up:
+	docker compose -f docker-compose.test.yml up -d --wait
+
+integration-test-down:
+	docker compose -f docker-compose.test.yml down -v
+
+integration-test:
+	@echo "Running integration tests against Postgres on port 5433..."
+	@DATABASE_URL="postgres://platform_test:platform_test@localhost:5433/platform_test" \
+		pnpm --filter @platform/api exec vitest run --config vitest.config.integration.ts
