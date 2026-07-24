@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { Hono } from 'hono';
 import { authRouter } from './auth.js';
 
@@ -63,12 +63,12 @@ describe('POST /auth/register', () => {
 });
 
 describe('POST /auth/login', () => {
-  it('returns a session', async () => {
+  it('returns a session with JWT token', async () => {
     const res = await app.request('/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: 'user@example.com',
+        email: 'any@example.com',
         password: 'any-password',
       }),
     });
@@ -76,22 +76,45 @@ describe('POST /auth/login', () => {
 
     const body = await res.json();
     expect(body.token).toBeDefined();
-    expect(body.user.email).toBe('user@example.com');
+    expect(typeof body.token).toBe('string');
+    expect(body.token.split('.')).toHaveLength(3); // JWT has 3 parts
+    expect(body.user.email).toBe('any@example.com');
   });
 });
 
 describe('GET /auth/session', () => {
+  let validToken: string;
+
+  beforeAll(async () => {
+    const res = await app.request('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'session@test.com', password: 'test1234' }),
+    });
+    const body = await res.json();
+    validToken = body.token;
+  });
+
   it('returns unauthorized without bearer token', async () => {
     const res = await app.request('/auth/session');
     expect(res.status).toBe(401);
   });
 
-  it('returns valid with correct bearer token', async () => {
+  it('returns session with valid JWT', async () => {
     const res = await app.request('/auth/session', {
-      headers: { Authorization: 'Bearer some-token' },
+      headers: { Authorization: `Bearer ${validToken}` },
     });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.valid).toBe(true);
+    expect(body.userId).toBeDefined();
+    expect(body.email).toBe('session@test.com');
+  });
+
+  it('rejects invalid JWT', async () => {
+    const res = await app.request('/auth/session', {
+      headers: { Authorization: 'Bearer invalid.token.here' },
+    });
+    expect(res.status).toBe(401);
   });
 });

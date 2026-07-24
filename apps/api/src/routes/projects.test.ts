@@ -1,21 +1,51 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { Hono } from 'hono';
+import { authRouter } from './auth.js';
 import { projectRouter } from './projects.js';
 
-const app = new Hono().route('/projects', projectRouter);
+const app = new Hono()
+  .route('/auth', authRouter)
+  .route('/projects', projectRouter);
+
+let authToken: string;
+
+beforeAll(async () => {
+  const res = await app.request('/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'proj@test.com', password: 'test1234' }),
+  });
+  const body = await res.json();
+  authToken = body.token;
+});
+
+function authed(path: string, options: RequestInit = {}) {
+  return app.request(path, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${authToken}`,
+      ...options.headers,
+    },
+  });
+}
 
 describe('Projects CRUD', () => {
   let projectId: string;
 
-  it('rejects list without organization_id', async () => {
+  it('rejects list without auth', async () => {
     const res = await app.request('/projects');
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects list without organization_id', async () => {
+    const res = await authed('/projects');
     expect(res.status).toBe(400);
   });
 
   it('creates a project', async () => {
-    const res = await app.request('/projects', {
+    const res = await authed('/projects', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: 'Test Project',
         description: 'A test project',
@@ -32,7 +62,7 @@ describe('Projects CRUD', () => {
   });
 
   it('lists projects by organization', async () => {
-    const res = await app.request(
+    const res = await authed(
       '/projects?organization_id=00000000-0000-0000-0000-000000000001',
     );
     expect(res.status).toBe(200);
@@ -43,7 +73,7 @@ describe('Projects CRUD', () => {
   });
 
   it('gets a project by id', async () => {
-    const res = await app.request(`/projects/${projectId}`);
+    const res = await authed(`/projects/${projectId}`);
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -51,16 +81,15 @@ describe('Projects CRUD', () => {
   });
 
   it('returns 404 for unknown project', async () => {
-    const res = await app.request(
+    const res = await authed(
       '/projects/00000000-0000-0000-0000-000000009999',
     );
     expect(res.status).toBe(404);
   });
 
   it('updates a project', async () => {
-    const res = await app.request(`/projects/${projectId}`, {
+    const res = await authed(`/projects/${projectId}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'Updated Project' }),
     });
     expect(res.status).toBe(200);
@@ -70,12 +99,12 @@ describe('Projects CRUD', () => {
   });
 
   it('deletes a project', async () => {
-    const res = await app.request(`/projects/${projectId}`, {
+    const res = await authed(`/projects/${projectId}`, {
       method: 'DELETE',
     });
     expect(res.status).toBe(204);
 
-    const check = await app.request(`/projects/${projectId}`);
+    const check = await authed(`/projects/${projectId}`);
     expect(check.status).toBe(404);
   });
 });
