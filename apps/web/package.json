@@ -8,7 +8,9 @@
     "build": "next build",
     "start": "next start",
     "type-check": "tsc --noEmit",
-    "lint": "biome lint src/"
+    "lint": "biome lint src/",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@platform/shared-types": "workspace:*",
@@ -19,6 +21,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
+    "@playwright/test": "^1.49.0",
     "@types/react-dom": "^19.0.0",
     "typescript": "^5.7.0"
   }
