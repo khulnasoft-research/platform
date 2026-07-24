@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '../middleware/validate.js';
+import { db } from '../db/index.js';
 import { previewEngine } from '../services/preview-engine.js';
 
 export const previewRouter = new Hono();
@@ -37,16 +38,63 @@ const updateFilesSchema = z.object({
 previewRouter.post('/', zValidator('json', createPreviewSchema), async (c) => {
   const data = c.req.valid('json');
   const session = previewEngine.createSession(data);
+
+  if (db.connected) {
+    await db.query(
+      `INSERT INTO preview_sessions (id, project_id, task_id, status, url, framework, build_logs, files, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (id) DO NOTHING`,
+      [session.id, session.projectId, session.taskId, session.status, session.url,
+       session.framework, JSON.stringify(session.buildLogs), JSON.stringify(session.files), session.createdAt],
+    );
+  }
+
   return c.json(session, 201);
 });
 
 previewRouter.get('/', async (c) => {
   const projectId = c.req.query('project_id') || undefined;
+
+  if (db.connected) {
+    const rows = projectId
+      ? await db.query('SELECT * FROM preview_sessions WHERE project_id = $1 ORDER BY created_at DESC', [projectId])
+      : await db.query('SELECT * FROM preview_sessions ORDER BY created_at DESC');
+    const sessions = (rows ?? []).map((row: any) => ({
+      id: row.id,
+      projectId: row.project_id,
+      taskId: row.task_id,
+      status: row.status,
+      url: row.url,
+      framework: row.framework,
+      buildLogs: row.build_logs ?? [],
+      files: row.files ?? [],
+      createdAt: row.created_at,
+    }));
+    return c.json({ previews: sessions });
+  }
+
   const sessions = previewEngine.listSessions(projectId);
   return c.json({ previews: sessions });
 });
 
 previewRouter.get('/:id', async (c) => {
+  if (db.connected) {
+    const row = await db.queryOne('SELECT * FROM preview_sessions WHERE id = $1', [c.req.param('id')]);
+    if (row) {
+      return c.json({
+        id: row.id,
+        projectId: row.project_id,
+        taskId: row.task_id,
+        status: row.status,
+        url: row.url,
+        framework: row.framework,
+        buildLogs: row.build_logs ?? [],
+        files: row.files ?? [],
+        createdAt: row.created_at,
+      });
+    }
+  }
+
   const session = previewEngine.getSession(c.req.param('id'));
   if (!session) return c.json({ error: 'Preview session not found' }, 404);
   return c.json(session);
@@ -55,6 +103,14 @@ previewRouter.get('/:id', async (c) => {
 previewRouter.post('/:id/stop', async (c) => {
   const session = previewEngine.stopSession(c.req.param('id'));
   if (!session) return c.json({ error: 'Preview session not found' }, 404);
+
+  if (db.connected) {
+    await db.query(
+      `UPDATE preview_sessions SET status = $1, stopped_at = now() WHERE id = $2`,
+      [session.status, c.req.param('id')],
+    );
+  }
+
   return c.json(session);
 });
 
@@ -121,6 +177,14 @@ previewRouter.patch('/:id/files', zValidator('json', updateFilesSchema), async (
   const data = c.req.valid('json');
   const session = previewEngine.updateFiles(c.req.param('id'), data.files);
   if (!session) return c.json({ error: 'Preview session not found' }, 404);
+
+  if (db.connected) {
+    await db.query(
+      `UPDATE preview_sessions SET files = $1 WHERE id = $2`,
+      [JSON.stringify(session.files), c.req.param('id')],
+    );
+  }
+
   return c.json(session);
 });
 
