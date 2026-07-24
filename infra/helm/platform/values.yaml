@@ -1,0 +1,41 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/khulnasoft-research/platform
+  tag: latest
+  pullPolicy: Always
+
+service:
+  port: 3001
+
+ingress:
+  enabled: true
+  host: api.ai-platform.dev
+
+postgresql:
+  enabled: true
+  auth:
+    database: platform
+    username: platform
+
+redis:
+  enabled: true
+  auth:
+    enabled: false
+
+resources:
+  limits:
+    cpu: 1
+    memory: 1Gi
+  requests:
+    cpu: 256m
+    memory: 512Mi
+
+env:
+  NODE_ENV: production
+  PORT: "3001"
+
+envSecrets:
+  - OPENAI_API_KEY
+  - ANTHROPIC_API_KEY
+  - JWT_SECRET
