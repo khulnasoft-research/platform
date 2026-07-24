@@ -253,4 +253,58 @@ export const api = {
 
     stats: () => request<{ totalDeployments: number; activeEnvironments: number; successRate: number; averageDurationMs: number }>('/deploy/stats/overview'),
   },
+
+  preview: {
+    list: (projectId?: string) => {
+      const params = projectId ? `?project_id=${projectId}` : '';
+      return request<{ previews: unknown[] }>(`/previews${params}`);
+    },
+
+    create: (body: {
+      projectId: string;
+      taskId: string;
+      framework?: string;
+      files?: Array<{ path: string; content: string; type: string; size: number; updatedAt: string }>;
+    }) =>
+      request<{ id: string; status: string; url: string; framework: string }>(
+        '/previews',
+        { method: 'POST', body: JSON.stringify(body) },
+      ),
+
+    get: (id: string) =>
+      request<{
+        id: string;
+        projectId: string;
+        status: string;
+        url: string;
+        framework: string;
+        buildLogs: unknown[];
+        files: unknown[];
+        createdAt: string;
+      }>(`/previews/${id}`),
+
+    stop: (id: string) =>
+      request<{ id: string; status: string }>(`/previews/${id}/stop`, { method: 'POST' }),
+
+    logs: (id: string, since?: string) => {
+      const params = since ? `?since=${since}` : '';
+      return request<{ logs: unknown[] }>(`/previews/${id}/logs${params}`);
+    },
+
+    updateFiles: (id: string, files: Array<{ path: string; content: string; type: string; size: number; updatedAt: string }>) =>
+      request<{ id: string; files: unknown[] }>(`/previews/${id}/files`, {
+        method: 'PATCH',
+        body: JSON.stringify({ files }),
+      }),
+
+    metrics: (id: string) =>
+      request<{
+        id: string;
+        cpuUsage: number;
+        memoryUsageMb: number;
+        requestCount: number;
+        averageResponseTimeMs: number;
+        uptimeSeconds: number;
+      }>(`/previews/${id}/metrics`),
+  },
 };

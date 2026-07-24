@@ -107,6 +107,7 @@ export default function DeployPage() {
           <a href="/dashboard" style={{ color: '#94a3b8', fontSize: '0.875rem', textDecoration: 'none' }}>Projects</a>
           <a href="/agents" style={{ color: '#94a3b8', fontSize: '0.875rem', textDecoration: 'none' }}>Agents</a>
           <a href="/blueprints" style={{ color: '#94a3b8', fontSize: '0.875rem', textDecoration: 'none' }}>Blueprints</a>
+          <a href="/previews" style={{ color: '#94a3b8', fontSize: '0.875rem', textDecoration: 'none' }}>Previews</a>
           <span style={{ color: '#3b82f6', fontSize: '0.875rem' }}>Deploy</span>
         </div>
         <button onClick={() => { localStorage.removeItem('session_token'); router.replace('/'); }}

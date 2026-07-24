@@ -115,6 +115,8 @@ export default function BlueprintsPage() {
           <h1 style={{ fontSize: '1.25rem', margin: 0 }}>AI Engineering Platform</h1>
           <a href="/dashboard" style={{ color: '#94a3b8', fontSize: '0.875rem', textDecoration: 'none' }}>Projects</a>
           <a href="/agents" style={{ color: '#94a3b8', fontSize: '0.875rem', textDecoration: 'none' }}>Agents</a>
+          <a href="/previews" style={{ color: '#94a3b8', fontSize: '0.875rem', textDecoration: 'none' }}>Previews</a>
+          <a href="/deploy" style={{ color: '#94a3b8', fontSize: '0.875rem', textDecoration: 'none' }}>Deploy</a>
           <span style={{ color: '#3b82f6', fontSize: '0.875rem' }}>Blueprints</span>
         </div>
         <button onClick={() => { localStorage.removeItem('session_token'); router.replace('/'); }}
