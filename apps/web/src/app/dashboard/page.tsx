@@ -80,7 +80,11 @@ export default function DashboardPage() {
           borderBottom: '1px solid #1e293b',
         }}
       >
-        <h1 style={{ fontSize: '1.25rem', margin: 0 }}>AI Engineering Platform</h1>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <h1 style={{ fontSize: '1.25rem', margin: 0 }}>AI Engineering Platform</h1>
+          <span style={{ color: '#3b82f6', fontSize: '0.875rem' }}>Projects</span>
+          <a href="/agents" style={{ color: '#94a3b8', fontSize: '0.875rem', textDecoration: 'none' }}>Agents</a>
+        </div>
         <button
           onClick={handleLogout}
           style={{

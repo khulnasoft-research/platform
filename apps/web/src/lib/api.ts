@@ -87,4 +87,51 @@ export const api = {
 
     models: () => request<{ models: unknown[] }>('/ai/models'),
   },
+
+  agents: {
+    list: () => request<{ agents: unknown[] }>('/agents'),
+
+    tools: () => request<{ tools: unknown[] }>('/agents/tools'),
+  },
+
+  tasks: {
+    list: (projectId?: string) =>
+      request<{ tasks: unknown[] }>(
+        `/agents/tasks${projectId ? `?project_id=${projectId}` : ''}`,
+      ),
+
+    create: (body: {
+      projectId: string;
+      goal: string;
+      assignee: string;
+      priority?: string;
+      approvalGates?: string[];
+    }) =>
+      request<{ id: string; status: string; goal: string; assignee: string }>(
+        '/agents/tasks',
+        { method: 'POST', body: JSON.stringify(body) },
+      ),
+
+    get: (id: string) =>
+      request<{ id: string; status: string; goal: string; assignee: string; plan: unknown; result: unknown; approvalGates: unknown[]; createdAt: string }>(
+        `/agents/tasks/${id}`,
+      ),
+
+    cancel: (id: string) =>
+      request<{ id: string; status: string }>(`/agents/tasks/${id}/cancel`, {
+        method: 'POST',
+      }),
+
+    createPlan: (id: string) =>
+      request<{ steps: unknown[]; estimatedTokens: number; estimatedCostUsd: number; tools: string[] }>(
+        `/agents/tasks/${id}/plan`,
+        { method: 'POST' },
+      ),
+
+    approveGate: (taskId: string, gateId: string, approved: boolean, notes?: string) =>
+      request<unknown>(`/agents/tasks/${taskId}/approve/${gateId}`, {
+        method: 'POST',
+        body: JSON.stringify({ approved, notes }),
+      }),
+  },
 };
