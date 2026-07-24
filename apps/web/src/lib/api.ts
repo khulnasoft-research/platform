@@ -176,4 +176,81 @@ export const api = {
         { method: 'POST', body: JSON.stringify({ change }) },
       ),
   },
+
+  deploy: {
+    providers: () =>
+      request<{ providers: unknown[] }>('/deploy/providers'),
+
+    environments: {
+      list: (projectId: string) =>
+        request<{ environments: unknown[] }>(`/deploy/environments?project_id=${projectId}`),
+
+      create: (body: {
+        projectId: string;
+        name: string;
+        type: string;
+        provider: string;
+        region?: string;
+      }) =>
+        request<{ id: string; name: string; type: string; provider: string; status: string }>(
+          '/deploy/environments',
+          { method: 'POST', body: JSON.stringify(body) },
+        ),
+
+      get: (id: string) =>
+        request<{ id: string; name: string; type: string; provider: string; status: string; envVars: string[] }>(
+          `/deploy/environments/${id}`,
+        ),
+
+      delete: (id: string) => request<void>(`/deploy/environments/${id}`, { method: 'DELETE' }),
+
+      setEnvVars: (id: string, envVars: string[]) =>
+        request<{ id: string; envVars: string[] }>(`/deploy/environments/${id}/env-vars`, {
+          method: 'POST',
+          body: JSON.stringify({ envVars }),
+        }),
+
+      removeEnvVars: (id: string, keys: string[]) =>
+        request<{ id: string; envVars: string[] }>(`/deploy/environments/${id}/env-vars`, {
+          method: 'DELETE',
+          body: JSON.stringify({ keys }),
+        }),
+    },
+
+    deployments: {
+      list: (projectId?: string, environmentId?: string) => {
+        const params = new URLSearchParams();
+        if (projectId) params.set('project_id', projectId);
+        if (environmentId) params.set('environment_id', environmentId);
+        return request<{ deployments: unknown[] }>(`/deploy?${params}`);
+      },
+
+      create: (body: {
+        projectId: string;
+        environmentId: string;
+        commitSha: string;
+        provider: string;
+      }) =>
+        request<{ id: string; status: string; commitSha: string; provider: string }>(
+          '/deploy',
+          { method: 'POST', body: JSON.stringify(body) },
+        ),
+
+      get: (id: string) =>
+        request<{ id: string; status: string; commitSha: string; provider: string; environmentId: string; logs: unknown[] }>(
+          `/deploy/${id}`,
+        ),
+
+      rollback: (id: string) =>
+        request<{ id: string; status: string }>(`/deploy/${id}/rollback`, { method: 'POST' }),
+
+      logs: (id: string) =>
+        request<{ logs: unknown[] }>(`/deploy/${id}/logs`),
+
+      artifact: (id: string) =>
+        request<{ id: string; type: string; url: string; size: number }>(`/deploy/${id}/artifact`),
+    },
+
+    stats: () => request<{ totalDeployments: number; activeEnvironments: number; successRate: number; averageDurationMs: number }>('/deploy/stats/overview'),
+  },
 };
