@@ -7,6 +7,7 @@ import { projectRouter } from './routes/projects.js';
 import { aiRouter } from './routes/ai.js';
 import { agentRouter } from './routes/agents.js';
 import { blueprintRouter } from './routes/blueprints.js';
+import { previewRouter } from './routes/previews.js';
 import { healthRouter } from './routes/health.js';
 
 const app = new Hono();
@@ -19,6 +20,7 @@ app.route('/api/v1/projects', projectRouter);
 app.route('/api/v1/ai', aiRouter);
 app.route('/api/v1/agents', agentRouter);
 app.route('/api/v1/blueprints', blueprintRouter);
+app.route('/api/v1/previews', previewRouter);
 app.route('/api/v1', healthRouter);
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404));

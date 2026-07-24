@@ -4,4 +4,5 @@ export * from './ai/types.js';
 export * from './agent/types.js';
 export * from './blueprint/types.js';
 export * from './deployment/types.js';
+export * from './preview/types.js';
 export * from './stream/types.js';
