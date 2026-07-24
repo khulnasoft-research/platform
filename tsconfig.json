@@ -28,8 +28,11 @@
       "@platform/ai-sdk": ["./packages/ai-sdk/src"],
       "@platform/ai-sdk/*": ["./packages/ai-sdk/src/*"],
       "@platform/design-core": ["./packages/design-core/src"],
+      "@platform/design-core/*": ["./packages/design-core/src/*"],
       "@platform/orchestration": ["./packages/orchestration/src"],
-      "@platform/enterprise-controls": ["./packages/enterprise-controls/src"]
+      "@platform/orchestration/*": ["./packages/orchestration/src/*"],
+      "@platform/enterprise-controls": ["./packages/enterprise-controls/src"],
+      "@platform/enterprise-controls/*": ["./packages/enterprise-controls/src/*"]
     }
   },
   "exclude": ["node_modules", "dist", ".next"]
