@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '../middleware/validate.js';
+import { aiGateway } from '../services/ai-gateway.js';
 
 export const aiRouter = new Hono();
 
@@ -29,10 +30,8 @@ const generateSchema = chatSchema.extend({
     .optional(),
 });
 
-// POST /ai/chat
 aiRouter.post('/chat', zValidator('json', chatSchema), async (c) => {
   const data = c.req.valid('json');
-  const model = data.model || 'claude-sonnet-4';
 
   if (data.stream) {
     c.header('Content-Type', 'text/event-stream');
@@ -43,38 +42,39 @@ aiRouter.post('/chat', zValidator('json', chatSchema), async (c) => {
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
-
-        const send = (event: string, data: unknown) => {
+        const send = (event: string, payload: unknown) => {
           controller.enqueue(
-            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`),
           );
         };
 
-        send('meta', {
-          requestId: crypto.randomUUID(),
-          model,
-          provider: 'anthropic',
-          startedAt: new Date().toISOString(),
-        });
+        try {
+          const result = await aiGateway.chat({ ...data, stream: false, skipCache: true });
 
-        // Simulate streaming for Phase 1
-        const responseChunks = [
-          'Here is a sample response from the AI.',
-          ' This demonstrates the streaming protocol.',
-          '\n\n```typescript\nconst greeting = "Hello, World!";\n```',
-        ];
+          send('meta', result.meta);
 
-        for (const [i, chunk] of responseChunks.entries()) {
-          await new Promise((r) => setTimeout(r, 50));
-          send('token', { content: chunk, index: i, type: i === 2 ? 'code' : 'text' });
+          const words = result.content.split(' ');
+          for (let i = 0; i < words.length; i++) {
+            await new Promise((r) => setTimeout(r, 30));
+            send('token', {
+              content: (i === 0 ? '' : ' ') + words[i],
+              index: i,
+            });
+          }
+
+          send('finish', {
+            stopReason: 'stop',
+            usage: result.usage,
+            requestId: result.meta.requestId,
+            latencyMs: result.latencyMs,
+          });
+        } catch (err) {
+          send('error', {
+            code: 'GATEWAY_ERROR',
+            message: err instanceof Error ? err.message : 'AI Gateway error',
+            recoverable: false,
+          });
         }
-
-        send('finish', {
-          stopReason: 'stop',
-          usage: { inputTokens: 150, outputTokens: 42 },
-          requestId: crypto.randomUUID(),
-          latencyMs: 1500,
-        });
 
         controller.close();
       },
@@ -83,15 +83,26 @@ aiRouter.post('/chat', zValidator('json', chatSchema), async (c) => {
     return c.newResponse(stream);
   }
 
-  return c.json({
-    requestId: crypto.randomUUID(),
-    model,
-    content: 'Synchronous response for non-streaming request.',
-    usage: { inputTokens: 150, outputTokens: 30 },
-  });
+  try {
+    const result = await aiGateway.chat(data);
+    return c.json({
+      requestId: result.meta.requestId,
+      model: result.meta.model,
+      provider: result.meta.provider,
+      tier: result.meta.tier,
+      content: result.content,
+      usage: result.usage,
+      latencyMs: result.latencyMs,
+      cached: result.meta.cached,
+    });
+  } catch (err) {
+    return c.json(
+      { error: err instanceof Error ? err.message : 'AI Gateway error' },
+      502,
+    );
+  }
 });
 
-// POST /ai/generate
 aiRouter.post('/generate', zValidator('json', generateSchema), async (c) => {
   const data = c.req.valid('json');
 
@@ -102,41 +113,53 @@ aiRouter.post('/generate', zValidator('json', generateSchema), async (c) => {
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
-      const send = (event: string, data: unknown) => {
+      const send = (event: string, payload: unknown) => {
         controller.enqueue(
-          encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+          encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`),
         );
       };
 
-      send('meta', {
-        requestId: crypto.randomUUID(),
-        model: data.model || 'claude-sonnet-4',
-        provider: 'anthropic',
-        startedAt: new Date().toISOString(),
-      });
-
-      const files = [
-        { path: 'src/api/users.ts', content: 'export async function getUsers() { ... }' },
-        { path: 'src/components/UserList.tsx', content: 'export function UserList() { ... }' },
-      ];
-
-      for (const file of files) {
-        send('diff', {
-          path: file.path,
-          type: 'edit',
-          patch: `@@ -0,0 +1,3 @@\n+${file.content.replace(/\n/g, '\\n')}`,
+      try {
+        const result = await aiGateway.chat({
+          model: data.model,
+          messages: data.messages,
+          stream: false,
+          skipCache: true,
+          temperature: data.temperature,
+          maxTokens: data.maxTokens,
         });
-        await new Promise((r) => setTimeout(r, 100));
+
+        send('meta', result.meta);
+
+        const files = data.files ?? [
+          { path: 'src/api/users.ts', content: 'export async function getUsers() { ... }' },
+          { path: 'src/components/UserList.tsx', content: 'export function UserList() { ... }' },
+        ];
+
+        for (const file of files) {
+          send('diff', {
+            path: file.path,
+            type: 'edit',
+            patch: `@@ -0,0 +1,3 @@\n+${file.content.replace(/\n/g, '\\n')}`,
+          });
+          await new Promise((r) => setTimeout(r, 100));
+        }
+
+        send('progress', { percentage: 100, message: 'Generation complete' });
+
+        send('finish', {
+          stopReason: 'stop',
+          usage: result.usage,
+          requestId: result.meta.requestId,
+          latencyMs: result.latencyMs,
+        });
+      } catch (err) {
+        send('error', {
+          code: 'GENERATION_ERROR',
+          message: err instanceof Error ? err.message : 'Generation failed',
+          recoverable: true,
+        });
       }
-
-      send('progress', { percentage: 100, message: 'Generation complete' });
-
-      send('finish', {
-        stopReason: 'stop',
-        usage: { inputTokens: 500, outputTokens: 200 },
-        requestId: crypto.randomUUID(),
-        latencyMs: 2500,
-      });
 
       controller.close();
     },
@@ -145,31 +168,14 @@ aiRouter.post('/generate', zValidator('json', generateSchema), async (c) => {
   return c.newResponse(stream);
 });
 
-// GET /ai/models
 aiRouter.get('/models', (c) => {
-  return c.json({
-    models: [
-      {
-        id: 'claude-sonnet-4',
-        provider: 'anthropic',
-        name: 'Claude Sonnet 4',
-        tier: 'balanced',
-        features: ['chat', 'streaming', 'vision', 'tools', 'structured-output'],
-      },
-      {
-        id: 'gpt-4o',
-        provider: 'openai',
-        name: 'GPT-4o',
-        tier: 'balanced',
-        features: ['chat', 'streaming', 'vision', 'tools', 'structured-output'],
-      },
-      {
-        id: 'gpt-4o-mini',
-        provider: 'openai',
-        name: 'GPT-4o Mini',
-        tier: 'fast',
-        features: ['chat', 'streaming'],
-      },
-    ],
-  });
+  return c.json({ models: aiGateway.getModels() });
+});
+
+aiRouter.get('/gateway/providers', (c) => {
+  return c.json({ providers: aiGateway.getProviderStatus() });
+});
+
+aiRouter.get('/gateway/usage', (c) => {
+  return c.json(aiGateway.getUsageStats());
 });
