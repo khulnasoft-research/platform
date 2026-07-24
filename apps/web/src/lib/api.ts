@@ -134,4 +134,46 @@ export const api = {
         body: JSON.stringify({ approved, notes }),
       }),
   },
+
+  blueprints: {
+    list: (projectId: string) =>
+      request<{ snapshots: unknown[] }>(`/blueprints?project_id=${projectId}`),
+
+    create: (body: {
+      projectId: string;
+      commitSha: string;
+      branch: string;
+      nodes: unknown[];
+      edges: unknown[];
+      metadata: unknown;
+    }) =>
+      request<{ id: string; projectId: string; commitSha: string; branch: string; nodes: unknown[]; edges: unknown[]; metadata: unknown; createdAt: string }>(
+        '/blueprints',
+        { method: 'POST', body: JSON.stringify(body) },
+      ),
+
+    get: (id: string) =>
+      request<{ id: string; projectId: string; commitSha: string; branch: string; nodes: unknown[]; edges: unknown[]; metadata: unknown; createdAt: string }>(
+        `/blueprints/${id}`,
+      ),
+
+    delete: (id: string) => request<void>(`/blueprints/${id}`, { method: 'DELETE' }),
+
+    analyze: (id: string) =>
+      request<{ pattern: string; description: string; recommendations: string[] }>(
+        `/blueprints/${id}/analyze`,
+        { method: 'POST' },
+      ),
+
+    drift: (currentId: string, baselineId: string) =>
+      request<{ findings: unknown[] }>(
+        `/blueprints/${currentId}/drift?baseline_id=${baselineId}`,
+      ),
+
+    impact: (snapshotId: string, targetNodeId: string, change: string) =>
+      request<{ target: string; change: string; directImpact: string[]; indirectImpact: string[]; risk: string }>(
+        `/blueprints/${snapshotId}/impact?targetNodeId=${targetNodeId}`,
+        { method: 'POST', body: JSON.stringify({ change }) },
+      ),
+  },
 };

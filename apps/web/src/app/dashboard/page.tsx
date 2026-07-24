@@ -84,6 +84,7 @@ export default function DashboardPage() {
           <h1 style={{ fontSize: '1.25rem', margin: 0 }}>AI Engineering Platform</h1>
           <span style={{ color: '#3b82f6', fontSize: '0.875rem' }}>Projects</span>
           <a href="/agents" style={{ color: '#94a3b8', fontSize: '0.875rem', textDecoration: 'none' }}>Agents</a>
+          <a href="/blueprints" style={{ color: '#94a3b8', fontSize: '0.875rem', textDecoration: 'none' }}>Blueprints</a>
         </div>
         <button
           onClick={handleLogout}
