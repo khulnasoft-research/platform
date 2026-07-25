@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
+import { LoadingPage } from '@/lib/ui';
 
 interface BlueprintNode {
   id: string;
@@ -135,7 +136,7 @@ export default function BlueprintDetailPage() {
     low: '#10b981', medium: '#f59e0b', high: '#f97316', critical: '#ef4444',
   };
 
-  if (loading) return <div style={{ minHeight: '100vh', background: '#0f172a', color: '#e2e8f0', padding: '2rem' }}>Loading...</div>;
+  if (loading) return <LoadingPage />;
   if (!snapshot) return <div style={{ minHeight: '100vh', background: '#0f172a', color: '#ef4444', padding: '2rem' }}>{error || 'Snapshot not found'}</div>;
 
   return (

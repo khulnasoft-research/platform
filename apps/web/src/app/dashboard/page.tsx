@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
+import { LoadingSection } from '@/lib/ui';
+import { getOrgId } from '@/lib/org';
 
 interface Project {
   id: string;
@@ -19,9 +21,8 @@ export default function DashboardPage() {
 
   const loadProjects = useCallback(async () => {
     try {
-      const res = await api.projects.list(
-        '00000000-0000-0000-0000-000000000001',
-      );
+      const orgId = await getOrgId();
+      const res = await api.projects.list(orgId);
       setProjects(res.projects as Project[]);
     } catch (err: unknown) {
       if (err instanceof ApiError && err.status === 401) {
@@ -53,9 +54,10 @@ export default function DashboardPage() {
     const name = prompt('Project name:');
     if (!name) return;
     try {
+      const orgId = await getOrgId();
       await api.projects.create({
         name,
-        organizationId: '00000000-0000-0000-0000-000000000001',
+        organizationId: orgId,
       });
       loadProjects();
     } catch {
@@ -136,7 +138,7 @@ export default function DashboardPage() {
         )}
 
         {loading ? (
-          <p style={{ color: '#64748b' }}>Loading...</p>
+          <LoadingSection rows={4} />
         ) : projects.length === 0 ? (
           <div
             style={{

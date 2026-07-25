@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useRef, type FormEvent } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
+import { LoadingPage } from '@/lib/ui';
 
 interface PreviewFile {
   path: string;
@@ -147,7 +148,7 @@ export default function PreviewDetailPage() {
     } catch { setError('Failed to add file'); }
   }
 
-  if (loading) return <div style={{ minHeight: '100vh', background: '#0f172a', color: '#e2e8f0', padding: '2rem' }}>Loading...</div>;
+  if (loading) return <LoadingPage />;
   if (error && !session) return <div style={{ minHeight: '100vh', background: '#0f172a', color: '#ef4444', padding: '2rem' }}>{error}</div>;
 
   return (

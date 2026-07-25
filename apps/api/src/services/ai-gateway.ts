@@ -1,11 +1,5 @@
-import type {
-  AIProvider,
-  ModelTier,
-  ModelFeature,
-  TokenUsage,
-  AILogEntry,
-  Message,
-} from '@platform/shared-types';
+import type { AIProvider, ModelTier, ModelFeature, TokenUsage, AILogEntry, Message } from '@platform/shared-types';
+import { ProviderRegistry, type AIProviderAdapter } from '@platform/ai-sdk';
 
 interface ModelRoute {
   modelId: string;
@@ -135,22 +129,64 @@ const modelRegistry: ModelRoute[] = [
 
 type RateLimitStore = Map<string, { count: number; resetAt: number }>;
 
+const MODEL_TO_ADAPTER_MODEL: Record<string, string> = {
+  'claude-sonnet-4': 'claude-sonnet-4-20250514',
+  'claude-haiku-4': 'claude-sonnet-4-20250514',
+  'claude-opus-4': 'claude-opus-4-20250514',
+  'gpt-4o': 'gpt-4o',
+  'gpt-4o-mini': 'gpt-4o-mini',
+  'gemini-2.0-flash': 'gemini-2.0-flash',
+  'gemini-2.0-pro': 'gemini-2.0-pro',
+};
+
 class AiGateway {
+  private registry: ProviderRegistry;
   private cache = new Map<string, string>();
   private usageLog: AILogEntry[] = [];
   private providerStatus = new Map<AIProvider, ProviderStatus>();
   private rateLimiters = new Map<string, RateLimitStore>();
+  private simulateMode: boolean;
 
   constructor() {
-    for (const provider of ['openai', 'anthropic', 'google', 'mistral'] as AIProvider[]) {
-      this.providerStatus.set(provider, {
-        provider,
-        healthy: true,
-        lastCheck: new Date().toISOString(),
-        latencyMs: Math.floor(Math.random() * 200) + 50,
-        rateLimitRemaining: 10000,
-      });
+    this.registry = new ProviderRegistry();
+    this.simulateMode = true;
+
+    const providerConfigs: Array<{ provider: AIProvider; envKey: string }> = [
+      { provider: 'anthropic', envKey: 'ANTHROPIC_API_KEY' },
+      { provider: 'openai', envKey: 'OPENAI_API_KEY' },
+      { provider: 'google', envKey: 'GOOGLE_GENERATIVE_AI_API_KEY' },
+    ];
+
+    for (const cfg of providerConfigs) {
+      const apiKey = process.env[cfg.envKey];
+      if (apiKey) {
+        try {
+          this.registry.register({ provider: cfg.provider, apiKey });
+          this.providerStatus.set(cfg.provider, {
+            provider: cfg.provider,
+            healthy: true,
+            lastCheck: new Date().toISOString(),
+            latencyMs: 0,
+            rateLimitRemaining: 10000,
+          });
+          this.simulateMode = false;
+        } catch {
+          this.markUnhealthy(cfg.provider);
+        }
+      } else {
+        this.markUnhealthy(cfg.provider);
+      }
     }
+  }
+
+  private markUnhealthy(provider: AIProvider): void {
+    this.providerStatus.set(provider, {
+      provider,
+      healthy: false,
+      lastCheck: new Date().toISOString(),
+      latencyMs: 0,
+      rateLimitRemaining: 0,
+    });
   }
 
   getModelRoute(modelId: string): ModelRoute | undefined {
@@ -184,20 +220,14 @@ class AiGateway {
     for (const entry of this.usageLog) {
       const p = entry.provider;
       if (!stats.byProvider[p]) stats.byProvider[p] = { requests: 0, tokens: 0, costUsd: 0 };
-      // biome-ignore lint/style/noNonNullAssertion: guarded above
       stats.byProvider[p]!.requests++;
-      // biome-ignore lint/style/noNonNullAssertion: guarded above
       stats.byProvider[p]!.tokens += entry.inputTokens + entry.outputTokens;
-      // biome-ignore lint/style/noNonNullAssertion: guarded above
       stats.byProvider[p]!.costUsd += entry.costUsd;
 
       const t = entry.tier;
       if (!stats.byTier[t]) stats.byTier[t] = { requests: 0, tokens: 0, costUsd: 0 };
-      // biome-ignore lint/style/noNonNullAssertion: guarded above
       stats.byTier[t]!.requests++;
-      // biome-ignore lint/style/noNonNullAssertion: guarded above
       stats.byTier[t]!.tokens += entry.inputTokens + entry.outputTokens;
-      // biome-ignore lint/style/noNonNullAssertion: guarded above
       stats.byTier[t]!.costUsd += entry.costUsd;
     }
 
@@ -250,38 +280,43 @@ class AiGateway {
     _maxTokens?: number,
   ): { content: string; inputTokens: number; outputTokens: number; latencyMs: number } {
     const lastMessage = messages[messages.length - 1]?.content ?? '';
-    const estimatedInputTokens = Math.ceil(
-      messages.reduce((s, m) => s + m.content.length / 4, 0),
-    );
+    const estimatedInputTokens = Math.ceil(messages.reduce((s, m) => s + m.content.length / 4, 0));
 
-    const providerResponses: Record<AIProvider, string> = {
-      anthropic:
-        'This is a simulated response from Anthropic (Claude). The AI Gateway ' +
-        `processed your request for "${lastMessage.slice(0, 50)}..." ` +
-        'through the configured provider routing.',
-      openai:
-        'This is a simulated response from OpenAI (GPT). The AI Gateway ' +
-        `routed your request for "${lastMessage.slice(0, 50)}..." to the OpenAI provider.`,
-      google:
-        'This is a simulated response from Google (Gemini). The AI Gateway ' +
-        `routed your request for "${lastMessage.slice(0, 50)}..." to the Gemini provider.`,
-      mistral:
-        'This is a simulated Mistral response. The AI Gateway ' +
-        'routed your request to the Mistral provider as a fallback.',
-      openrouter:
-        'OpenRouter fallback response.',
-      local:
-        'Local model fallback response.',
+    const providerResponses: Record<string, string> = {
+      anthropic: 'This is a simulated response from Anthropic (Claude).',
+      openai: 'This is a simulated response from OpenAI (GPT).',
+      google: 'This is a simulated response from Google (Gemini).',
+      mistral: 'This is a simulated Mistral response.',
+      openrouter: 'OpenRouter fallback response.',
+      local: 'Local model fallback response.',
     };
 
-    const latencyMs = Math.floor(Math.random() * 800) + 200 + (provider === 'google' ? 300 : 0);
-    const outputTokens = Math.floor(Math.random() * 100) + 20;
-
     return {
-      content: providerResponses[provider] ?? providerResponses.anthropic,
+      content: `${providerResponses[provider] ?? providerResponses.anthropic} (last message: "${lastMessage.slice(0, 50)}...")`,
       inputTokens: estimatedInputTokens,
-      outputTokens,
-      latencyMs,
+      outputTokens: Math.floor(Math.random() * 100) + 20,
+      latencyMs: Math.floor(Math.random() * 800) + 200,
+    };
+  }
+
+  private async callRealProvider(
+    adapter: AIProviderAdapter,
+    modelId: string,
+    messages: Message[],
+    temperature?: number,
+    maxTokens?: number,
+  ): Promise<{ content: string; inputTokens: number; outputTokens: number; latencyMs: number }> {
+    const result = await adapter.complete({
+      model: MODEL_TO_ADAPTER_MODEL[modelId] ?? modelId,
+      messages,
+      temperature,
+      maxTokens,
+    });
+    return {
+      content: result.content,
+      inputTokens: result.usage.inputTokens,
+      outputTokens: result.usage.outputTokens,
+      latencyMs: result.latencyMs,
     };
   }
 
@@ -341,13 +376,21 @@ class AiGateway {
 
       for (const provider of providersToTry) {
         const status = this.providerStatus.get(provider);
-        if (!status?.healthy) continue;
+        if (!status?.healthy && !this.simulateMode) continue;
 
         try {
-          const result = this.simulateProviderCall(provider, modelId, req.messages, req.temperature, req.maxTokens);
-          content = result.content;
-          inputTokens = result.inputTokens;
-          outputTokens = result.outputTokens;
+          if (!this.simulateMode && this.registry.has(provider)) {
+            const adapter = this.registry.get(provider);
+            const result = await this.callRealProvider(adapter, modelId, req.messages, req.temperature, req.maxTokens);
+            content = result.content;
+            inputTokens = result.inputTokens;
+            outputTokens = result.outputTokens;
+          } else {
+            const result = this.simulateProviderCall(provider, modelId, req.messages, req.temperature, req.maxTokens);
+            content = result.content;
+            inputTokens = result.inputTokens;
+            outputTokens = result.outputTokens;
+          }
           providerUsed = provider;
           if (provider !== route.provider) fallbackChain.push(provider);
           success = true;
@@ -407,6 +450,81 @@ class AiGateway {
       },
       latencyMs,
     };
+  }
+
+  async *streamChat(req: GatewayRequest): AsyncGenerator<{ event: string; data: unknown }> {
+    const modelId = req.model || 'claude-sonnet-4';
+    const route = this.getModelRoute(modelId);
+
+    if (!route) throw new Error(`Unknown model: ${modelId}`);
+    if (!this.checkRateLimit(route.tier)) throw new Error(`Rate limit exceeded for tier: ${route.tier}`);
+
+    const providersToTry = [route.provider, ...route.fallbacks];
+    let succeeded = false;
+
+    for (const provider of providersToTry) {
+      const status = this.providerStatus.get(provider);
+      if (!status?.healthy && !this.simulateMode) continue;
+
+      try {
+        if (!this.simulateMode && this.registry.has(provider)) {
+          const adapter = this.registry.get(provider);
+          const stream = adapter.stream({
+            model: MODEL_TO_ADAPTER_MODEL[modelId] ?? modelId,
+            messages: req.messages,
+            temperature: req.temperature,
+            maxTokens: req.maxTokens,
+          });
+
+          for await (const event of stream) {
+            if (event.type === 'chunk') {
+              yield { event: 'token', data: { content: event.content } };
+            } else if (event.type === 'done') {
+              yield {
+                event: 'finish',
+                data: {
+                  stopReason: 'stop',
+                  usage: {
+                    inputTokens: event.usage.inputTokens,
+                    outputTokens: event.usage.outputTokens,
+                    totalTokens: event.usage.inputTokens + event.usage.outputTokens,
+                    costUsd: this.calculateCost(route.pricing, event.usage.inputTokens, event.usage.outputTokens),
+                  },
+                  requestId: crypto.randomUUID(),
+                  latencyMs: 0,
+                },
+              };
+            } else if (event.type === 'error') {
+              yield { event: 'error', data: { code: 'PROVIDER_ERROR', message: event.message, recoverable: false } };
+            }
+          }
+        } else {
+          const result = this.simulateProviderCall(provider, modelId, req.messages, req.temperature, req.maxTokens);
+          yield { event: 'meta', data: { requestId: crypto.randomUUID(), model: modelId, provider } };
+          const words = result.content.split(' ');
+          for (let i = 0; i < words.length; i++) {
+            yield { event: 'token', data: { content: (i === 0 ? '' : ' ') + words[i] } };
+          }
+          yield {
+            event: 'finish',
+            data: {
+              stopReason: 'stop', usage: { inputTokens: result.inputTokens, outputTokens: result.outputTokens, totalTokens: result.inputTokens + result.outputTokens, costUsd: this.calculateCost(route.pricing, result.inputTokens, result.outputTokens) },
+              requestId: crypto.randomUUID(),
+              latencyMs: result.latencyMs,
+            },
+          };
+        }
+
+        succeeded = true;
+        break;
+      } catch (err) {
+        yield { event: 'error', data: { code: 'FALLBACK', message: `Provider ${provider} failed: ${err instanceof Error ? err.message : 'unknown'}`, recoverable: true } };
+      }
+    }
+
+    if (!succeeded) {
+      yield { event: 'error', data: { code: 'ALL_PROVIDERS_FAILED', message: 'All providers failed', recoverable: false } };
+    }
   }
 }
 

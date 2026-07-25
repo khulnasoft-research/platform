@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs';
+
 export interface TemplateVariables {
   [key: string]: string | number | boolean | string[] | undefined;
 }
@@ -18,7 +20,29 @@ export class PromptTemplate {
   }
 
   static fromFile(path: string): PromptTemplate {
-    return new PromptTemplate(path);
+    const candidates = [
+      path,
+      `${path}.txt`,
+      `${path}.md`,
+      `${path}.prompt`,
+      `src/templates/${path}`,
+      `src/templates/${path}.txt`,
+      `src/templates/${path}.md`,
+      `src/templates/${path}.prompt`,
+      `templates/${path}`,
+      `templates/${path}.txt`,
+      `templates/${path}.md`,
+      `templates/${path}.prompt`,
+    ];
+    for (const candidate of candidates) {
+      if (existsSync(candidate)) {
+        return new PromptTemplate(readFileSync(candidate, 'utf-8'));
+      }
+    }
+    throw new Error(
+      `PromptTemplate file not found: ${path}\n` +
+      `Tried the following locations:\n${candidates.map((c) => `  - ${c}`).join('\n')}`,
+    );
   }
 }
 

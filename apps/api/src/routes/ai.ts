@@ -49,25 +49,13 @@ aiRouter.post('/chat', zValidator('json', chatSchema), async (c) => {
         };
 
         try {
-          const result = await aiGateway.chat({ ...data, stream: false, skipCache: true });
-
-          send('meta', result.meta);
-
-          const words = result.content.split(' ');
-          for (let i = 0; i < words.length; i++) {
-            await new Promise((r) => setTimeout(r, 30));
-            send('token', {
-              content: (i === 0 ? '' : ' ') + words[i],
-              index: i,
-            });
+          for await (const { event, data: payload } of aiGateway.streamChat({
+            ...data,
+            stream: true,
+            skipCache: true,
+          })) {
+            send(event, payload);
           }
-
-          send('finish', {
-            stopReason: 'stop',
-            usage: result.usage,
-            requestId: result.meta.requestId,
-            latencyMs: result.latencyMs,
-          });
         } catch (err) {
           send('error', {
             code: 'GATEWAY_ERROR',
@@ -120,16 +108,16 @@ aiRouter.post('/generate', zValidator('json', generateSchema), async (c) => {
       };
 
       try {
-        const result = await aiGateway.chat({
+        for await (const { event, data: payload } of aiGateway.streamChat({
           model: data.model,
           messages: data.messages,
-          stream: false,
+          stream: true,
           skipCache: true,
           temperature: data.temperature,
           maxTokens: data.maxTokens,
-        });
-
-        send('meta', result.meta);
+        })) {
+          send(event, payload);
+        }
 
         const files = data.files ?? [
           { path: 'src/api/users.ts', content: 'export async function getUsers() { ... }' },
@@ -142,17 +130,9 @@ aiRouter.post('/generate', zValidator('json', generateSchema), async (c) => {
             type: 'edit',
             patch: `@@ -0,0 +1,3 @@\n+${file.content.replace(/\n/g, '\\n')}`,
           });
-          await new Promise((r) => setTimeout(r, 100));
         }
 
         send('progress', { percentage: 100, message: 'Generation complete' });
-
-        send('finish', {
-          stopReason: 'stop',
-          usage: result.usage,
-          requestId: result.meta.requestId,
-          latencyMs: result.latencyMs,
-        });
       } catch (err) {
         send('error', {
           code: 'GENERATION_ERROR',

@@ -10,6 +10,7 @@ export interface ButtonProps {
   children: string;
   onClick?: () => void;
   type?: 'button' | 'submit' | 'reset';
+  className?: string;
 }
 
 const baseStyles = {

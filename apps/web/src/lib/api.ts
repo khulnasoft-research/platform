@@ -52,7 +52,7 @@ export const api = {
         { method: 'POST', body: JSON.stringify(body) },
       ),
 
-    session: () => request<{ valid: boolean }>('/auth/session'),
+    session: () => request<{ valid: boolean; userId: string; email: string; organizationId: string }>('/auth/session'),
   },
 
   projects: {

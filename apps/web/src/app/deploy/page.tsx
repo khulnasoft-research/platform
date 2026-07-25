@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
+import { LoadingSection } from '@/lib/ui';
+import { getOrgId } from '@/lib/org';
 
 interface EnvSummary {
   id: string;
@@ -45,8 +47,8 @@ export default function DeployPage() {
   const loadAll = useCallback(async () => {
     try {
       const [envRes, depRes] = await Promise.all([
-        api.deploy.environments.list('00000000-0000-0000-0000-000000000001'),
-        api.deploy.deployments.list('00000000-0000-0000-0000-000000000001'),
+        api.deploy.environments.list(await getOrgId()),
+        api.deploy.deployments.list(await getOrgId()),
         api.deploy.stats(),
       ]);
       setEnvironments(envRes.environments as EnvSummary[]);
@@ -75,7 +77,7 @@ export default function DeployPage() {
     setCreating(true);
     try {
       await api.deploy.environments.create({
-        projectId: '00000000-0000-0000-0000-000000000001',
+        projectId: await getOrgId(),
         name: envName, type: envType, provider: envProvider,
       });
       setEnvName(''); loadAll();
@@ -90,7 +92,7 @@ export default function DeployPage() {
     setCreatingDep(true);
     try {
       await api.deploy.deployments.create({
-        projectId: '00000000-0000-0000-0000-000000000001',
+        projectId: await getOrgId(),
         environmentId: depEnvId, commitSha: depSha, provider: depProvider,
       });
       setDepSha(''); loadAll();
@@ -167,7 +169,7 @@ export default function DeployPage() {
               </button>
             </form>
 
-            {loading ? <p style={{ color: '#64748b' }}>Loading...</p> : environments.length === 0 ? (
+            {loading ? <LoadingSection rows={3} /> : environments.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem', border: '2px dashed #1e293b', borderRadius: 12 }}>
                 <p style={{ color: '#64748b' }}>No environments yet</p>
               </div>
@@ -226,7 +228,7 @@ export default function DeployPage() {
               </button>
             </form>
 
-            {loading ? <p style={{ color: '#64748b' }}>Loading...</p> : deployments.length === 0 ? (
+            {loading ? <LoadingSection rows={3} /> : deployments.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem', border: '2px dashed #1e293b', borderRadius: 12 }}>
                 <p style={{ color: '#64748b' }}>No deployments yet</p>
               </div>

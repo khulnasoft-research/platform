@@ -34,6 +34,19 @@ db-init:
 	psql -d platform -f infra/db/init/001-schema.sql
 	psql -d platform -f infra/db/init/002-extensions.sql
 
+db-migrate:
+	@echo "Running migrations..."
+	pnpm --filter @platform/api exec tsx infra/db/migrate.ts
+
+db-reset:
+	@echo "Resetting database..."
+	dropdb platform 2>/dev/null || true
+	createdb platform
+	pnpm --filter @platform/api exec tsx infra/db/migrate.ts
+
+db-connect:
+	psql -d platform
+
 generate:
 	pnpm generate
 

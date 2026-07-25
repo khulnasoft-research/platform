@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
+import { LoadingSection } from '@/lib/ui';
+import { getFirstProjectId } from '@/lib/org';
 
 interface BlueprintNode {
   id: string;
@@ -54,7 +56,7 @@ export default function BlueprintsPage() {
 
   const loadSnapshots = useCallback(async () => {
     try {
-      const res = await api.blueprints.list('00000000-0000-0000-0000-000000000001');
+      const res = await api.blueprints.list(await getFirstProjectId());
       setSnapshots(res.snapshots as BlueprintSnapshot[]);
     } catch (err: unknown) {
       if (err instanceof ApiError && err.status === 401) {
@@ -81,7 +83,7 @@ export default function BlueprintsPage() {
     setError('');
     try {
       await api.blueprints.create({
-        projectId: '00000000-0000-0000-0000-000000000001',
+        projectId: await getFirstProjectId(),
         commitSha,
         branch,
         nodes: [
@@ -151,7 +153,7 @@ export default function BlueprintsPage() {
         </form>
 
         {loading ? (
-          <p style={{ color: '#64748b' }}>Loading...</p>
+          <LoadingSection rows={3} />
         ) : snapshots.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem', border: '2px dashed #1e293b', borderRadius: 12 }}>
             <p style={{ color: '#64748b', marginBottom: '0.5rem' }}>No blueprints yet</p>

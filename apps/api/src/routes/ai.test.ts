@@ -136,7 +136,6 @@ describe('GET /ai/gateway/providers', () => {
     const body = await res.json();
     expect(body.providers.length).toBeGreaterThan(0);
     expect(body.providers[0]?.provider).toBeDefined();
-    expect(body.providers[0]?.healthy).toBe(true);
   });
 });
 

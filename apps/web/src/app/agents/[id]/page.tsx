@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
+import { LoadingPage } from '@/lib/ui';
 
 interface TaskStep {
   id: string;
@@ -120,7 +121,7 @@ export default function TaskDetailPage() {
     pending: '#f59e0b', approved: '#10b981', rejected: '#ef4444', skipped: '#64748b',
   };
 
-  if (loading) return <div style={{ minHeight: '100vh', background: '#0f172a', color: '#e2e8f0', padding: '2rem' }}>Loading...</div>;
+  if (loading) return <LoadingPage />;
   if (!task) return <div style={{ minHeight: '100vh', background: '#0f172a', color: '#ef4444', padding: '2rem' }}>{error || 'Task not found'}</div>;
 
   return (

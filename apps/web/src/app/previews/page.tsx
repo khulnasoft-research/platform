@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
+import { LoadingPage } from '@/lib/ui';
 
 interface PreviewSession {
   id: string;
@@ -73,7 +74,7 @@ export default function PreviewsPage() {
     } catch { setError('Failed to stop preview'); }
   }
 
-  if (loading) return <div style={{ minHeight: '100vh', background: '#0f172a', color: '#e2e8f0', padding: '2rem' }}>Loading...</div>;
+  if (loading) return <LoadingPage />;
 
   return (
     <div style={{ minHeight: '100vh', background: '#0f172a', color: '#e2e8f0' }}>

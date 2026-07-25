@@ -117,10 +117,10 @@ export const darkTheme: Theme = {
   borderRadius,
 };
 
-export function createTheme(config: ThemeConfig): Theme {
-  const isDark = false;
+export function createTheme(config: ThemeConfig & { dark?: boolean }): Theme {
+  const isDark = config.dark ?? false;
   return {
-    name: 'custom',
+    name: isDark ? 'dark' : 'custom',
     colors: isDark ? darkColors(config.primaryColor) : lightColors(config.primaryColor),
     spacing,
     typography,

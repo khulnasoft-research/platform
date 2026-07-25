@@ -1,6 +1,8 @@
-import { serve } from '@hono/node-server';
+import { createServer } from 'node:http';
 import { Hono } from 'hono';
+import { WebSocketServer } from 'ws';
 import { cors } from 'hono/cors';
+import { getRequestListener } from '@hono/node-server';
 import { authRouter } from './routes/auth.js';
 import { projectRouter } from './routes/projects.js';
 import { aiRouter } from './routes/ai.js';
@@ -12,11 +14,12 @@ import { healthRouter } from './routes/health.js';
 import { structuredLogger } from './middleware/logger.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { rateLimit } from './middleware/rate-limit.js';
+import { loadEnterpriseState } from './services/enterprise-store.js';
+import { handleWebSocket } from './services/ws-handler.js';
 
 const app = new Hono();
 
 app.use('*', cors({ origin: '*', credentials: true }));
-
 app.use('*', structuredLogger);
 
 app.use('/api/v1/auth/*', rateLimit('auth'));
@@ -41,15 +44,37 @@ app.notFound((c) => {
 
 app.onError(errorHandler);
 
-const port = parseInt(process.env.PORT || '3001', 10);
+loadEnterpriseState().then(() => {
+  console.log(JSON.stringify({ level: 'info', message: 'Enterprise state loaded' }));
+}).catch((err) => {
+  console.error(JSON.stringify({ level: 'warn', message: 'Failed to load enterprise state', error: (err as Error).message }));
+});
 
-serve({ fetch: app.fetch, port }, () => {
+const port = parseInt(process.env.PORT || '3001', 10);
+const server = createServer(getRequestListener(app.fetch));
+
+const wss = new WebSocketServer({ noServer: true });
+
+wss.on('connection', handleWebSocket);
+
+server.on('upgrade', (request, socket, head) => {
+  const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
+  if (url.pathname === '/ws') {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
+  } else {
+    socket.destroy();
+  }
+});
+
+server.listen(port, '0.0.0.0', () => {
+  const addr = server.address();
+  const bind = typeof addr === 'string' ? addr : `http://${addr?.address || '0.0.0.0'}:${addr?.port || port}`;
   console.log(JSON.stringify({
     level: 'info',
-    message: `API server running on http://localhost:${port}`,
+    message: `API server running on ${bind}`,
     port,
     env: process.env.NODE_ENV || 'development',
   }));
 });
-
-export default app;

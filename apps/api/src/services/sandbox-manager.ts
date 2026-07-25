@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import type {
   SandboxBackend,
   SandboxBackendType,
@@ -19,6 +20,7 @@ class SandboxManager {
   private totalDurationMs = 0;
   private peakMemoryMb = 0;
   private activeCount = 0;
+  private cachedBestBackend: { type: SandboxBackendType; until: number } | null = null;
 
   constructor() {
     this.backends.set('process', new ProcessBackend());
@@ -28,6 +30,7 @@ class SandboxManager {
 
   setBackend(type: SandboxBackendType, backend: SandboxBackend): void {
     this.backends.set(type, backend);
+    this.cachedBestBackend = null;
   }
 
   getBackend(type?: SandboxBackendType): SandboxBackend {
@@ -35,6 +38,32 @@ class SandboxManager {
     const backend = this.backends.get(key);
     if (!backend) throw new Error(`Sandbox backend not available: ${key}`);
     return backend;
+  }
+
+  private detectBestBackend(): SandboxBackendType {
+    const now = Date.now();
+    if (this.cachedBestBackend && now < this.cachedBestBackend.until) {
+      return this.cachedBestBackend.type;
+    }
+
+    const probes: Array<{ type: SandboxBackendType; binary: string }> = [
+      { type: 'nsjail', binary: 'nsjail' },
+      { type: 'docker', binary: 'docker' },
+    ];
+
+    for (const { type, binary } of probes) {
+      try {
+        execSync(`which ${binary} 2>/dev/null || command -v ${binary} 2>/dev/null`, {
+          timeout: 2000,
+          stdio: 'pipe',
+        });
+        this.cachedBestBackend = { type, until: now + 30000 };
+        return type;
+      } catch {}
+    }
+
+    this.cachedBestBackend = { type: 'process', until: now + 30000 };
+    return 'process';
   }
 
   async execute(
@@ -97,10 +126,6 @@ class SandboxManager {
       averageDurationMs: this.executions > 0 ? Math.round(this.totalDurationMs / this.executions) : 0,
       peakMemoryUsedMb: this.peakMemoryMb,
     };
-  }
-
-  private detectBestBackend(): SandboxBackendType {
-    return 'process';
   }
 }
 

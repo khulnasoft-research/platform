@@ -42,5 +42,7 @@ authRouter.post('/login', zValidator('json', loginSchema), async (c) => {
 });
 
 authRouter.get('/session', requireAuth, async (c) => {
-  return c.json({ valid: true, userId: c.get('userId'), email: c.get('email') });
+  const userId = c.get('userId') as string;
+  const orgId = userId;
+  return c.json({ valid: true, userId, email: c.get('email'), organizationId: orgId });
 });

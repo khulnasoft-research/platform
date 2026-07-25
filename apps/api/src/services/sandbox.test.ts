@@ -106,6 +106,11 @@ describe('SandboxManager', () => {
     expect(health.nsjail).toBeDefined();
   });
 
+  it('falls back to process backend when privileged backends unavailable', () => {
+    const result = sandboxManager.getBackend();
+    expect(result.type).toBe('process');
+  });
+
   it('streams logs during execution', async () => {
     const logs: string[] = [];
     for await (const event of sandboxManager.stream({
