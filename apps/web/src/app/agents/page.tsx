@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 
@@ -23,13 +23,7 @@ export default function AgentsPage() {
   const [priority, setPriority] = useState('medium');
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
-    const token = localStorage.getItem('session_token');
-    if (!token) { router.replace('/login'); return; }
-    loadTasks();
-  }, [router]);
-
-  async function loadTasks() {
+  const loadTasks = useCallback(async () => {
     try {
       const res = await api.tasks.list();
       setTasks(res.tasks as Task[]);
@@ -43,7 +37,13 @@ export default function AgentsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [router]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('session_token');
+    if (!token) { router.replace('/login'); return; }
+    loadTasks();
+  }, [router, loadTasks]);
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
@@ -85,7 +85,7 @@ export default function AgentsPage() {
           <a href="/dashboard" style={{ color: '#94a3b8', fontSize: '0.875rem', textDecoration: 'none' }}>Projects</a>
           <span style={{ color: '#3b82f6', fontSize: '0.875rem' }}>Agents</span>
         </div>
-        <button onClick={() => { localStorage.removeItem('session_token'); router.replace('/'); }}
+        <button type="button" onClick={() => { localStorage.removeItem('session_token'); router.replace('/'); }}
           style={{ padding: '0.5rem 1rem', background: '#1e293b', color: '#e2e8f0', border: '1px solid #334155', borderRadius: 6, cursor: 'pointer' }}>
           Sign Out
         </button>
@@ -99,14 +99,14 @@ export default function AgentsPage() {
         <form onSubmit={handleCreate} style={{ background: '#1e293b', padding: '1.25rem', borderRadius: 8, marginBottom: '2rem' }}>
           <h3 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>New Task</h3>
           <div style={{ marginBottom: '0.75rem' }}>
-            <label style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>Goal</label>
-            <input value={goal} onChange={(e) => setGoal(e.target.value)} required
+            <label htmlFor="goal" style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>Goal</label>
+            <input id="goal" value={goal} onChange={(e) => setGoal(e.target.value)} required
               style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', boxSizing: 'border-box' }} />
           </div>
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
             <div style={{ flex: 1 }}>
-              <label style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>Agent</label>
-              <select value={assignee} onChange={(e) => setAssignee(e.target.value)}
+              <label htmlFor="assignee" style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>Agent</label>
+              <select id="assignee" value={assignee} onChange={(e) => setAssignee(e.target.value)}
                 style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0' }}>
                 <option value="architect">Architect</option>
                 <option value="planner">Planner</option>
@@ -119,8 +119,8 @@ export default function AgentsPage() {
               </select>
             </div>
             <div style={{ flex: 1 }}>
-              <label style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>Priority</label>
-              <select value={priority} onChange={(e) => setPriority(e.target.value)}
+              <label htmlFor="priority" style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>Priority</label>
+              <select id="priority" value={priority} onChange={(e) => setPriority(e.target.value)}
                 style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0' }}>
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -145,8 +145,8 @@ export default function AgentsPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {tasks.map((t) => (
-              <div key={t.id} onClick={() => router.push(`/agents/${t.id}`)}
-                style={{ padding: '1rem 1.25rem', background: '#1e293b', borderRadius: 8, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button type="button" key={t.id} onClick={() => router.push(`/agents/${t.id}`)}
+                style={{ padding: '1rem 1.25rem', background: '#1e293b', borderRadius: 8, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', border: 'none', textAlign: 'left', color: 'inherit', font: 'inherit' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.25rem' }}>
                     <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{t.goal}</span>
@@ -159,7 +159,7 @@ export default function AgentsPage() {
                   </p>
                 </div>
                 <span style={{ color: '#64748b', fontSize: '1.25rem' }}>&rarr;</span>
-              </div>
+              </button>
             ))}
           </div>
         )}

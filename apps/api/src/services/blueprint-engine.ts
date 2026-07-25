@@ -163,6 +163,7 @@ export const blueprintEngine = {
           severity: type === 'violates' ? 'error' : 'info',
           rule: 'edge-added',
           message: `New dependency: ${sourceId} → ${targetId} (${type})`,
+          // biome-ignore lint/style/noNonNullAssertion: split on known delimiter
           sourceNodeId: sourceId!,
           targetNodeId: targetId,
           suggestedFix:

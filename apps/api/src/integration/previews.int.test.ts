@@ -31,7 +31,7 @@ describe('Previews Integration', () => {
 
     const row = await db.queryOne('SELECT * FROM preview_sessions WHERE id = $1', [session.id]);
     expect(row).not.toBeNull();
-    expect(row!.framework).toBe('int-test');
+    expect(row?.framework).toBe('int-test');
   });
 
   itIfDb('lists sessions from DB', async () => {
@@ -39,7 +39,7 @@ describe('Previews Integration', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body.previews)).toBe(true);
-    const match = body.previews.find((s: any) => s.framework === 'int-test');
+    const match = body.previews.find((s: { framework: string }) => s.framework === 'int-test');
     expect(match).toBeDefined();
   });
 
@@ -77,6 +77,6 @@ describe('Previews Integration', () => {
 
     const row = await db.queryOne('SELECT status FROM preview_sessions WHERE id = $1', [session.id]);
     expect(row).not.toBeNull();
-    expect(['stopped', 'error', 'ready'].includes(row!.status)).toBe(true);
+    expect(['stopped', 'error', 'ready'].includes(row?.status)).toBe(true);
   });
 });

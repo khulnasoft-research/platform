@@ -55,10 +55,11 @@ export default function LoginPage() {
         )}
 
         <div style={{ marginBottom: '1rem' }}>
-          <label style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>
+          <label htmlFor="login-email" style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>
             Email
           </label>
           <input
+            id="login-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -76,10 +77,11 @@ export default function LoginPage() {
         </div>
 
         <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>
+          <label htmlFor="login-password" style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>
             Password
           </label>
           <input
+            id="login-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

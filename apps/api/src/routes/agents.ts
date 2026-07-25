@@ -31,21 +31,21 @@ const approveGateSchema = z.object({
   notes: z.string().optional(),
 });
 
-function toTask(row: any): Task {
+function toTask(row: Record<string, unknown>): Task {
   return {
-    id: row.id,
-    projectId: row.project_id,
+    id: row.id as string,
+    projectId: row.project_id as string,
     dependencies: [],
-    goal: row.goal,
-    assignee: row.assignee,
-    priority: row.priority,
-    status: row.status,
-    plan: row.plan,
-    result: row.result,
-    budget: row.budget ?? { monthlyLimit: 1000000, dailyLimit: 100000, perRequestLimit: 10000, costLimit: 10.0 },
-    approvalGates: row.approval_gates ?? [],
-    createdAt: row.created_at,
-    completedAt: row.completed_at,
+    goal: row.goal as string,
+    assignee: row.assignee as Task['assignee'],
+    priority: row.priority as Task['priority'],
+    status: row.status as Task['status'],
+    plan: row.plan as Task['plan'],
+    result: row.result as Task['result'],
+    budget: (row.budget as Task['budget']) ?? { monthlyLimit: 1000000, dailyLimit: 100000, perRequestLimit: 10000, costLimit: 10.0 },
+    approvalGates: (row.approval_gates as Task['approvalGates']) ?? [],
+    createdAt: row.created_at as string,
+    completedAt: row.completed_at as string | null,
   };
 }
 

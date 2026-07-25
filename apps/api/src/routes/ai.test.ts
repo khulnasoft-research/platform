@@ -124,7 +124,7 @@ describe('GET /ai/models', () => {
 
     const body = await res.json();
     expect(body.models.length).toBe(7);
-    expect(body.models[0]!.id).toBe('claude-sonnet-4');
+    expect(body.models[0]?.id).toBe('claude-sonnet-4');
   });
 });
 
@@ -135,8 +135,8 @@ describe('GET /ai/gateway/providers', () => {
 
     const body = await res.json();
     expect(body.providers.length).toBeGreaterThan(0);
-    expect(body.providers[0]!.provider).toBeDefined();
-    expect(body.providers[0]!.healthy).toBe(true);
+    expect(body.providers[0]?.provider).toBeDefined();
+    expect(body.providers[0]?.healthy).toBe(true);
   });
 });
 

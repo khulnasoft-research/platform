@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 
@@ -27,6 +27,14 @@ interface Artifact {
   size: number;
 }
 
+interface Deployment {
+  id: string;
+  commitSha: string;
+  status: string;
+  provider: string;
+  environmentId: string;
+}
+
 const statusColors: Record<string, string> = {
   building: '#f59e0b', deploying: '#3b82f6', live: '#10b981',
   failed: '#ef4444', rollback: '#f97316', cancelled: '#64748b',
@@ -40,7 +48,7 @@ export default function DeployDetailPage() {
   const router = useRouter();
   const params = useParams();
   const [env, setEnv] = useState<EnvDetail | null>(null);
-  const [deployments, setDeployments] = useState<any[]>([]);
+  const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [logs, setLogs] = useState<DeployLogEntry[]>([]);
   const [artifact, setArtifact] = useState<Artifact | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,26 +58,20 @@ export default function DeployDetailPage() {
 
   const isEnvPage = typeof params.id === 'string' && params.id.length === 36;
 
-  useEffect(() => {
-    const token = localStorage.getItem('session_token');
-    if (!token) { router.replace('/login'); return; }
-    if (isEnvPage) loadEnv(); else loadDeployment();
-  }, [router, isEnvPage]);
-
-  async function loadEnv() {
+  const loadEnv = useCallback(async () => {
     const id = String(params.id);
     try {
       const envRes = await api.deploy.environments.get(id);
       setEnv(envRes as EnvDetail);
       const depRes = await api.deploy.deployments.list(undefined, id);
-      setDeployments(depRes.deployments as any[]);
+      setDeployments(depRes.deployments as Deployment[]);
     } catch (err: unknown) {
       if (err instanceof ApiError && err.status === 404) setError('Environment not found');
       else setError('Failed to load environment');
     } finally { setLoading(false); }
-  }
+  }, [params.id]);
 
-  async function loadDeployment() {
+  const loadDeployment = useCallback(async () => {
     try {
       await api.deploy.deployments.get(params.id as string);
       const id = String(params.id);
@@ -84,7 +86,13 @@ export default function DeployDetailPage() {
       if (err instanceof ApiError && err.status === 404) setError('Deployment not found');
       else setError('Failed to load deployment');
     } finally { setLoading(false); }
-  }
+  }, [params.id]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('session_token');
+    if (!token) { router.replace('/login'); return; }
+    if (isEnvPage) loadEnv(); else loadDeployment();
+  }, [router, isEnvPage, loadEnv, loadDeployment]);
 
   async function handleRollback(id: string) {
     try {
@@ -135,7 +143,7 @@ export default function DeployDetailPage() {
                     {env.provider} &middot; {env.type}
                   </p>
                 </div>
-                <span style={{ padding: '0.25rem 0.75rem', borderRadius: 6, fontSize: '0.875rem', background: (statusColors[env.status] ?? '#64748b') + '22', color: statusColors[env.status] ?? '#64748b', fontWeight: 600, height: 'fit-content' }}>
+                <span style={{ padding: '0.25rem 0.75rem', borderRadius: 6, fontSize: '0.875rem', background: `${statusColors[env.status] ?? '#64748b'}22`, color: statusColors[env.status] ?? '#64748b', fontWeight: 600, height: 'fit-content' }}>
                   {env.status}
                 </span>
               </div>
@@ -146,7 +154,7 @@ export default function DeployDetailPage() {
               <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
                 <input value={newEnvVar} onChange={(e) => setNewEnvVar(e.target.value)} placeholder="KEY=value"
                   style={{ flex: 1, padding: '0.4rem', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0' }} />
-                <button onClick={handleAddEnvVar} disabled={!newEnvVar}
+                <button type="button" onClick={handleAddEnvVar} disabled={!newEnvVar}
                   style={{ padding: '0.4rem 1rem', background: newEnvVar ? '#3b82f6' : '#64748b', color: '#fff', border: 'none', borderRadius: 6, cursor: newEnvVar ? 'pointer' : 'not-allowed', fontWeight: 600 }}>
                   Add
                 </button>
@@ -157,7 +165,7 @@ export default function DeployDetailPage() {
                 ) : env.envVars.map((v) => (
                   <div key={v} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0.75rem', background: '#0f172a', borderRadius: 4 }}>
                     <code style={{ fontSize: '0.85rem', color: '#e2e8f0' }}>{v.replace(/=.+/, '=****')}</code>
-                    <button onClick={() => handleRemoveEnvVar(v.split('=')[0]!)}
+                    <button type="button" onClick={() => handleRemoveEnvVar(v.split('=')[0] ?? '')}
                       style={{ padding: '0.25rem 0.5rem', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 4, fontSize: '0.75rem', cursor: 'pointer' }}>
                       Remove
                     </button>
@@ -173,16 +181,16 @@ export default function DeployDetailPage() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {deployments.map((d) => (
-                    <div key={d.id} onClick={() => router.push(`/deploy/${d.id}`)}
-                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#0f172a', borderRadius: 6, cursor: 'pointer' }}>
+                    <button type="button" key={d.id} onClick={() => router.push(`/deploy/${d.id}`)}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#0f172a', borderRadius: 6, cursor: 'pointer', width: '100%', border: 'none', textAlign: 'left', color: 'inherit', font: 'inherit' }}>
                       <div>
                         <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{d.commitSha?.slice(0, 7)}</span>
                         <span style={{ color: '#64748b', fontSize: '0.8rem', marginLeft: '0.5rem' }}>{d.provider}</span>
                       </div>
-                      <span style={{ padding: '0.15rem 0.5rem', borderRadius: 4, fontSize: '0.75rem', background: (statusColors[d.status] ?? '#64748b') + '22', color: statusColors[d.status] ?? '#64748b' }}>
+                      <span style={{ padding: '0.15rem 0.5rem', borderRadius: 4, fontSize: '0.75rem', background: `${statusColors[d.status] ?? '#64748b'}22`, color: statusColors[d.status] ?? '#64748b' }}>
                         {d.status}
                       </span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -194,7 +202,7 @@ export default function DeployDetailPage() {
           <>
             <div style={{ background: '#1e293b', borderRadius: 8, padding: '1.5rem', marginBottom: '1.5rem' }}>
               <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>Actions</h3>
-              <button onClick={() => handleRollback(activeDeployId)}
+              <button type="button" onClick={() => handleRollback(activeDeployId)}
                 style={{ padding: '0.5rem 1.25rem', background: '#f97316', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>
                 Rollback Deployment
               </button>
@@ -206,8 +214,8 @@ export default function DeployDetailPage() {
                 <p style={{ color: '#64748b', fontSize: '0.85rem' }}>No logs</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', maxHeight: 300, overflow: 'auto' }}>
-                  {logs.map((l, i) => (
-                    <div key={i} style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', fontFamily: 'monospace' }}>
+                  {logs.map((l) => (
+                    <div key={`${l.timestamp}-${l.level}`} style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', fontFamily: 'monospace' }}>
                       <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>{new Date(l.timestamp).toLocaleTimeString()}</span>
                       <span style={{ color: logLevelColors[l.level] ?? '#94a3b8', minWidth: '3rem' }}>[{l.level}]</span>
                       <span style={{ color: '#e2e8f0' }}>{l.message}</span>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 
@@ -52,13 +52,7 @@ export default function BlueprintsPage() {
   const [branch, setBranch] = useState('main');
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
-    const token = localStorage.getItem('session_token');
-    if (!token) { router.replace('/login'); return; }
-    loadSnapshots();
-  }, [router]);
-
-  async function loadSnapshots() {
+  const loadSnapshots = useCallback(async () => {
     try {
       const res = await api.blueprints.list('00000000-0000-0000-0000-000000000001');
       setSnapshots(res.snapshots as BlueprintSnapshot[]);
@@ -72,7 +66,13 @@ export default function BlueprintsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [router]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('session_token');
+    if (!token) { router.replace('/login'); return; }
+    loadSnapshots();
+  }, [router, loadSnapshots]);
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
@@ -119,7 +119,7 @@ export default function BlueprintsPage() {
           <a href="/deploy" style={{ color: '#94a3b8', fontSize: '0.875rem', textDecoration: 'none' }}>Deploy</a>
           <span style={{ color: '#3b82f6', fontSize: '0.875rem' }}>Blueprints</span>
         </div>
-        <button onClick={() => { localStorage.removeItem('session_token'); router.replace('/'); }}
+        <button type="button" onClick={() => { localStorage.removeItem('session_token'); router.replace('/'); }}
           style={{ padding: '0.5rem 1rem', background: '#1e293b', color: '#e2e8f0', border: '1px solid #334155', borderRadius: 6, cursor: 'pointer' }}>
           Sign Out
         </button>
@@ -134,13 +134,13 @@ export default function BlueprintsPage() {
           <h3 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>New Snapshot</h3>
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
             <div style={{ flex: 2 }}>
-              <label style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>Commit SHA</label>
-              <input value={commitSha} onChange={(e) => setCommitSha(e.target.value)} required placeholder="abc123def"
+              <label htmlFor="commit-sha" style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>Commit SHA</label>
+              <input id="commit-sha" value={commitSha} onChange={(e) => setCommitSha(e.target.value)} required placeholder="abc123def"
                 style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', boxSizing: 'border-box' }} />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>Branch</label>
-              <input value={branch} onChange={(e) => setBranch(e.target.value)}
+              <label htmlFor="branch" style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>Branch</label>
+              <input id="branch" value={branch} onChange={(e) => setBranch(e.target.value)}
                 style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', boxSizing: 'border-box' }} />
             </div>
           </div>
@@ -162,8 +162,8 @@ export default function BlueprintsPage() {
             {snapshots.map((s) => {
               const nodeTypes = [...new Set(s.nodes.map((n) => n.type))];
               return (
-                <div key={s.id} onClick={() => router.push(`/blueprints/${s.id}`)}
-                  style={{ padding: '1rem 1.25rem', background: '#1e293b', borderRadius: 8, cursor: 'pointer' }}>
+                <button type="button" key={s.id} onClick={() => router.push(`/blueprints/${s.id}`)}
+                  style={{ padding: '1rem 1.25rem', background: '#1e293b', borderRadius: 8, cursor: 'pointer', width: '100%', border: 'none', textAlign: 'left', color: 'inherit', font: 'inherit' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                     <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{s.branch} @ {s.commitSha.slice(0, 7)}</span>
                     <span style={{ color: '#64748b', fontSize: '0.8rem' }}>{new Date(s.createdAt).toLocaleString()}</span>
@@ -175,12 +175,12 @@ export default function BlueprintsPage() {
                   </div>
                   <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                     {nodeTypes.map((t) => (
-                      <span key={t} style={{ padding: '0.125rem 0.5rem', borderRadius: 4, fontSize: '0.7rem', background: (nodeColors[t] ?? '#64748b') + '22', color: nodeColors[t] ?? '#64748b' }}>
+                      <span key={t} style={{ padding: '0.125rem 0.5rem', borderRadius: 4, fontSize: '0.7rem', background: `${nodeColors[t] ?? '#64748b'}22`, color: nodeColors[t] ?? '#64748b' }}>
                         {t}
                       </span>
                     ))}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

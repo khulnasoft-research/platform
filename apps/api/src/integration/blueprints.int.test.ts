@@ -43,7 +43,7 @@ describe('Blueprints Integration', () => {
 
     const row = await db.queryOne('SELECT * FROM blueprint_snapshots WHERE id = $1', [snapshot.id]);
     expect(row).not.toBeNull();
-    expect(row!.commit_sha).toBe('int-test-create');
+    expect(row?.commit_sha).toBe('int-test-create');
   });
 
   itIfDb('lists snapshots from DB', async () => {
@@ -57,7 +57,7 @@ describe('Blueprints Integration', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body.snapshots)).toBe(true);
-    const match = body.snapshots.find((s: any) => s.commitSha === 'int-test-list');
+    const match = body.snapshots.find((s: { commitSha: string }) => s.commitSha === 'int-test-list');
     expect(match).toBeDefined();
   });
 

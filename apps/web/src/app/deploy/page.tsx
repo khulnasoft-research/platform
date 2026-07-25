@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 
@@ -42,13 +42,7 @@ export default function DeployPage() {
   const [depProvider, setDepProvider] = useState('vercel');
   const [creatingDep, setCreatingDep] = useState(false);
 
-  useEffect(() => {
-    const token = localStorage.getItem('session_token');
-    if (!token) { router.replace('/login'); return; }
-    loadAll();
-  }, [router]);
-
-  async function loadAll() {
+  const loadAll = useCallback(async () => {
     try {
       const [envRes, depRes] = await Promise.all([
         api.deploy.environments.list('00000000-0000-0000-0000-000000000001'),
@@ -67,7 +61,13 @@ export default function DeployPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [router]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('session_token');
+    if (!token) { router.replace('/login'); return; }
+    loadAll();
+  }, [router, loadAll]);
 
   async function handleCreateEnv(e: FormEvent) {
     e.preventDefault();
@@ -110,7 +110,7 @@ export default function DeployPage() {
           <a href="/previews" style={{ color: '#94a3b8', fontSize: '0.875rem', textDecoration: 'none' }}>Previews</a>
           <span style={{ color: '#3b82f6', fontSize: '0.875rem' }}>Deploy</span>
         </div>
-        <button onClick={() => { localStorage.removeItem('session_token'); router.replace('/'); }}
+        <button type="button" onClick={() => { localStorage.removeItem('session_token'); router.replace('/'); }}
           style={{ padding: '0.5rem 1rem', background: '#1e293b', color: '#e2e8f0', border: '1px solid #334155', borderRadius: 6, cursor: 'pointer' }}>
           Sign Out
         </button>
@@ -121,11 +121,11 @@ export default function DeployPage() {
         {error && <p style={{ color: '#ef4444', marginBottom: '1rem' }}>{error}</p>}
 
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-          <button onClick={() => setTab('environments')}
+          <button type="button" onClick={() => setTab('environments')}
             style={{ padding: '0.5rem 1.25rem', background: tab === 'environments' ? '#3b82f6' : '#1e293b', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>
             Environments
           </button>
-          <button onClick={() => setTab('deployments')}
+          <button type="button" onClick={() => setTab('deployments')}
             style={{ padding: '0.5rem 1.25rem', background: tab === 'deployments' ? '#3b82f6' : '#1e293b', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>
             Deployments
           </button>
@@ -137,21 +137,21 @@ export default function DeployPage() {
               <h3 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>New Environment</h3>
               <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <div style={{ flex: 2 }}>
-                  <label style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>Name</label>
-                  <input value={envName} onChange={(e) => setEnvName(e.target.value)} required
+                  <label htmlFor="env-name" style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>Name</label>
+                  <input id="env-name" value={envName} onChange={(e) => setEnvName(e.target.value)} required
                     style={{ width: '100%', padding: '0.4rem', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', boxSizing: 'border-box' }} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>Type</label>
-                  <select value={envType} onChange={(e) => setEnvType(e.target.value)}
+                  <label htmlFor="env-type" style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>Type</label>
+                  <select id="env-type" value={envType} onChange={(e) => setEnvType(e.target.value)}
                     style={{ width: '100%', padding: '0.4rem', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0' }}>
                     <option value="persistent">Persistent</option>
                     <option value="ephemeral">Ephemeral</option>
                   </select>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>Provider</label>
-                  <select value={envProvider} onChange={(e) => setEnvProvider(e.target.value)}
+                  <label htmlFor="env-provider" style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>Provider</label>
+                  <select id="env-provider" value={envProvider} onChange={(e) => setEnvProvider(e.target.value)}
                     style={{ width: '100%', padding: '0.4rem', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0' }}>
                     <option value="vercel">Vercel</option>
                     <option value="railway">Railway</option>
@@ -174,16 +174,16 @@ export default function DeployPage() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {environments.map((e) => (
-                  <div key={e.id} onClick={() => router.push(`/deploy/${e.id}`)}
-                    style={{ padding: '1rem 1.25rem', background: '#1e293b', borderRadius: 8, cursor: 'pointer', display: 'flex', justifyContent: 'space-between' }}>
+                  <button type="button" key={e.id} onClick={() => router.push(`/deploy/${e.id}`)}
+                    style={{ padding: '1rem 1.25rem', background: '#1e293b', borderRadius: 8, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', width: '100%', border: 'none', textAlign: 'left', color: 'inherit', font: 'inherit' }}>
                     <div>
                       <p style={{ margin: '0 0 0.25rem', fontWeight: 600, fontSize: '0.95rem' }}>{e.name}</p>
                       <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.8rem' }}>{e.provider} &middot; {e.type}</p>
                     </div>
-                    <span style={{ padding: '0.2rem 0.5rem', borderRadius: 4, fontSize: '0.75rem', background: (statusColors[e.status] ?? '#64748b') + '22', color: statusColors[e.status] ?? '#64748b', height: 'fit-content' }}>
+                    <span style={{ padding: '0.2rem 0.5rem', borderRadius: 4, fontSize: '0.75rem', background: `${statusColors[e.status] ?? '#64748b'}22`, color: statusColors[e.status] ?? '#64748b', height: 'fit-content' }}>
                       {e.status}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -196,21 +196,21 @@ export default function DeployPage() {
               <h3 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>New Deployment</h3>
               <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <div style={{ flex: 2 }}>
-                  <label style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>Commit SHA</label>
-                  <input value={depSha} onChange={(e) => setDepSha(e.target.value)} required
+                  <label htmlFor="dep-sha" style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>Commit SHA</label>
+                  <input id="dep-sha" value={depSha} onChange={(e) => setDepSha(e.target.value)} required
                     style={{ width: '100%', padding: '0.4rem', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', boxSizing: 'border-box' }} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>Environment</label>
-                  <select value={depEnvId} onChange={(e) => setDepEnvId(e.target.value)}
+                  <label htmlFor="dep-env" style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>Environment</label>
+                  <select id="dep-env" value={depEnvId} onChange={(e) => setDepEnvId(e.target.value)}
                     style={{ width: '100%', padding: '0.4rem', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0' }}>
                     <option value="">Select...</option>
                     {environments.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
                   </select>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>Provider</label>
-                  <select value={depProvider} onChange={(e) => setDepProvider(e.target.value)}
+                  <label htmlFor="dep-provider" style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>Provider</label>
+                  <select id="dep-provider" value={depProvider} onChange={(e) => setDepProvider(e.target.value)}
                     style={{ width: '100%', padding: '0.4rem', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0' }}>
                     <option value="vercel">Vercel</option>
                     <option value="railway">Railway</option>
@@ -235,18 +235,18 @@ export default function DeployPage() {
                 {deployments.map((d) => {
                   const env = environments.find((e) => e.id === d.environmentId);
                   return (
-                    <div key={d.id} onClick={() => router.push(`/deploy/${d.id}`)}
-                      style={{ padding: '1rem 1.25rem', background: '#1e293b', borderRadius: 8, cursor: 'pointer', display: 'flex', justifyContent: 'space-between' }}>
+                    <button type="button" key={d.id} onClick={() => router.push(`/deploy/${d.id}`)}
+                      style={{ padding: '1rem 1.25rem', background: '#1e293b', borderRadius: 8, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', width: '100%', border: 'none', textAlign: 'left', color: 'inherit', font: 'inherit' }}>
                       <div>
                         <p style={{ margin: '0 0 0.25rem', fontWeight: 600, fontSize: '0.95rem' }}>
                           {d.commitSha.slice(0, 7)} @ {env?.name ?? 'unknown'}
                         </p>
                         <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.8rem' }}>{d.provider}</p>
                       </div>
-                      <span style={{ padding: '0.2rem 0.5rem', borderRadius: 4, fontSize: '0.75rem', background: (statusColors[d.status] ?? '#64748b') + '22', color: statusColors[d.status] ?? '#64748b', height: 'fit-content' }}>
+                      <span style={{ padding: '0.2rem 0.5rem', borderRadius: 4, fontSize: '0.75rem', background: `${statusColors[d.status] ?? '#64748b'}22`, color: statusColors[d.status] ?? '#64748b', height: 'fit-content' }}>
                         {d.status}
                       </span>
-                    </div>
+                    </button>
                   );
                 })}
               </div>

@@ -97,7 +97,7 @@ describe('Blueprints CRUD', () => {
 
     const body = await res.json();
     expect(body.snapshots).toHaveLength(1);
-    expect(body.snapshots[0]!.id).toBe(snapshotId);
+    expect(body.snapshots[0]?.id).toBe(snapshotId);
   });
 
   it('requires project_id for list', async () => {

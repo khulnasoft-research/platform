@@ -56,10 +56,11 @@ export default function RegisterPage() {
         )}
 
         <div style={{ marginBottom: '1rem' }}>
-          <label style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>
+          <label htmlFor="name" style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>
             Name
           </label>
           <input
+            id="name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -77,10 +78,11 @@ export default function RegisterPage() {
         </div>
 
         <div style={{ marginBottom: '1rem' }}>
-          <label style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>
+          <label htmlFor="email" style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>
             Email
           </label>
           <input
+            id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -98,10 +100,11 @@ export default function RegisterPage() {
         </div>
 
         <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>
+          <label htmlFor="password" style={{ color: '#94a3b8', fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>
             Password
           </label>
           <input
+            id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

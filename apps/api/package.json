@@ -13,16 +13,17 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@platform/shared-types": "workspace:*",
     "@hono/node-server": "^1.13.0",
     "@hono/zod-validator": "^0.4.0",
-    "hono": "^4.6.0",
+    "@platform/shared-types": "workspace:*",
     "bcryptjs": "^2.4.3",
+    "hono": "^4.6.0",
     "jose": "^5.9.0",
     "pg": "^8.13.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.5",
     "@types/bcryptjs": "^2.4.6",
     "@types/pg": "^8.11.0",
     "tsx": "^4.19.0",

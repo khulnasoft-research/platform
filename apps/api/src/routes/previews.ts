@@ -59,16 +59,16 @@ previewRouter.get('/', async (c) => {
     const rows = projectId
       ? await db.query('SELECT * FROM preview_sessions WHERE project_id = $1 ORDER BY created_at DESC', [projectId])
       : await db.query('SELECT * FROM preview_sessions ORDER BY created_at DESC');
-    const sessions = (rows ?? []).map((row: any) => ({
-      id: row.id,
-      projectId: row.project_id,
-      taskId: row.task_id,
-      status: row.status,
-      url: row.url,
-      framework: row.framework,
-      buildLogs: row.build_logs ?? [],
-      files: row.files ?? [],
-      createdAt: row.created_at,
+    const sessions = (rows ?? []).map((row: Record<string, unknown>) => ({
+      id: row.id as string,
+      projectId: row.project_id as string,
+      taskId: row.task_id as string,
+      status: row.status as string,
+      url: row.url as string,
+      framework: row.framework as string,
+      buildLogs: (row.build_logs as unknown[]) ?? [],
+      files: (row.files as unknown[]) ?? [],
+      createdAt: row.created_at as string,
     }));
     return c.json({ previews: sessions });
   }

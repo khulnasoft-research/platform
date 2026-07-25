@@ -20,7 +20,7 @@ export class NsjailBackend implements SandboxBackend {
 
     try {
       const cfgPath = this.writeConfig(req, workDir);
-      const child: any = spawn('nsjail', [
+      const child: ReturnType<typeof spawn> = spawn('nsjail', [
         '--config', cfgPath,
         '--chroot', '/',
         '--bindmount', `${workDir}:/workspace:ro`,
@@ -28,7 +28,7 @@ export class NsjailBackend implements SandboxBackend {
         '--', req.command, ...req.args,
       ], { stdio: ['pipe', 'pipe', 'pipe'] });
 
-      if (child.pid) this.activePids.add(child.pid as number);
+      if (child.pid) this.activePids.add(child.pid);
       let stdout = '';
       let stderr = '';
       let timedOut = false;
@@ -67,14 +67,14 @@ export class NsjailBackend implements SandboxBackend {
     const events: SandboxLogEvent[] = [];
 
     try {
-      const child: any = spawn('nsjail', [
+      const child: ReturnType<typeof spawn> = spawn('nsjail', [
         '--chroot', '/',
         '--bindmount', `${workDir}:/workspace:ro`,
         '--cwd', '/workspace',
         '--', req.command, ...req.args,
       ], { stdio: ['pipe', 'pipe', 'pipe'] });
 
-      if (child.pid) this.activePids.add(child.pid as number);
+      if (child.pid) this.activePids.add(child.pid);
       events.push({ timestamp: new Date().toISOString(), stream: 'system', message: `nsjail started: ${req.command}` });
 
       let stdoutBuf = '';

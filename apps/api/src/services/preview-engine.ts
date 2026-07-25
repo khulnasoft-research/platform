@@ -143,6 +143,7 @@ class PreviewEngine {
   }
 
   private async startSandboxBuild(session: PreviewSession): Promise<void> {
+    // biome-ignore lint/style/noNonNullAssertion: nextjs always exists in FRAMEWORK_BUILD_COMMANDS
     const buildCfg = FRAMEWORK_BUILD_COMMANDS[session.framework] ?? FRAMEWORK_BUILD_COMMANDS.nextjs!;
 
     session.status = 'building';
@@ -163,6 +164,7 @@ class PreviewEngine {
     try {
       if (buildCfg.install.length > 0) {
         const installResult = await sandboxManager.execute({
+          // biome-ignore lint/style/noNonNullAssertion: guarded by install.length > 0 above
           command: buildCfg.install[0]!,
           args: buildCfg.install.slice(1),
           workingDirectory: '/workspace',

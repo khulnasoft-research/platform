@@ -40,35 +40,35 @@ const envVarsRemoveSchema = z.object({
   keys: z.array(z.string()),
 });
 
-function toEnvironment(row: any) {
+function toEnvironment(row: Record<string, unknown>) {
   return {
-    id: row.id,
-    projectId: row.project_id,
-    name: row.name,
-    type: row.type,
-    provider: row.provider,
-    region: row.region ?? 'us-east-1',
-    compute: row.compute ?? {},
-    scaling: row.scaling ?? {},
-    envVars: row.env_vars ?? [],
-    domain: row.domain ?? '',
-    ssl: row.ssl ?? false,
-    createdAt: row.created_at,
-    autoDestroyAt: row.auto_destroy_at,
+    id: row.id as string,
+    projectId: row.project_id as string,
+    name: row.name as string,
+    type: row.type as string,
+    provider: row.provider as string,
+    region: (row.region as string) ?? 'us-east-1',
+    compute: (row.compute as Record<string, unknown>) ?? {},
+    scaling: (row.scaling as Record<string, unknown>) ?? {},
+    envVars: (row.env_vars as string[]) ?? [],
+    domain: (row.domain as string) ?? '',
+    ssl: (row.ssl as boolean) ?? false,
+    createdAt: row.created_at as string,
+    autoDestroyAt: row.auto_destroy_at as string | null,
   };
 }
 
-function toDeployment(row: any) {
+function toDeployment(row: Record<string, unknown>) {
   return {
-    id: row.id,
-    projectId: row.project_id,
-    environmentId: row.environment_id,
-    commitSha: row.commit_sha,
-    buildNumber: row.build_number,
-    status: row.status,
-    provider: row.provider,
-    url: row.url ?? '',
-    createdAt: row.created_at,
+    id: row.id as string,
+    projectId: row.project_id as string,
+    environmentId: row.environment_id as string,
+    commitSha: row.commit_sha as string,
+    buildNumber: row.build_number as number,
+    status: row.status as string,
+    provider: row.provider as string,
+    url: (row.url as string) ?? '',
+    createdAt: row.created_at as string,
   };
 }
 
@@ -86,7 +86,7 @@ deployRouter.get('/providers', (c) => {
 });
 
 deployRouter.get('/providers/:name', (c) => {
-  const provider = deployEngine.getProvider(c.req.param('name') as any);
+  const provider = deployEngine.getProvider(c.req.param('name'));
   if (!provider) return c.json({ error: 'Provider not found' }, 404);
   return c.json(provider);
 });
@@ -260,11 +260,11 @@ deployRouter.get('/:id/logs', async (c) => {
       'SELECT * FROM deployment_logs WHERE deployment_id = $1 ORDER BY created_at ASC',
       [c.req.param('id')],
     );
-    return c.json({ logs: (rows ?? []).map((r: any) => ({
-      timestamp: r.created_at,
-      level: r.level,
-      message: r.message,
-      source: r.source,
+    return c.json({ logs: (rows ?? []).map((r: Record<string, unknown>) => ({
+      timestamp: r.created_at as string,
+      level: r.level as string,
+      message: r.message as string,
+      source: r.source as string,
     })) });
   }
 

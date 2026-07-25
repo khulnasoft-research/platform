@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 
@@ -77,13 +77,7 @@ export default function BlueprintDetailPage() {
   const [error, setError] = useState('');
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
-  useEffect(() => {
-    const token = localStorage.getItem('session_token');
-    if (!token) { router.replace('/login'); return; }
-    loadSnapshot();
-  }, [router]);
-
-  async function loadSnapshot() {
+  const loadSnapshot = useCallback(async () => {
     try {
       const res = await api.blueprints.get(params.id as string);
       setSnapshot(res as BlueprintSnapshot);
@@ -93,7 +87,13 @@ export default function BlueprintDetailPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [params]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('session_token');
+    if (!token) { router.replace('/login'); return; }
+    loadSnapshot();
+  }, [router, loadSnapshot]);
 
   async function handleAnalyze() {
     setAnalyzing(true);
@@ -160,11 +160,11 @@ export default function BlueprintDetailPage() {
           </p>
 
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-            <button onClick={handleAnalyze} disabled={analyzing}
+            <button type="button" onClick={handleAnalyze} disabled={analyzing}
               style={{ padding: '0.5rem 1rem', background: analyzing ? '#64748b' : '#8b5cf6', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, cursor: analyzing ? 'not-allowed' : 'pointer' }}>
               {analyzing ? 'Analyzing...' : 'Analyze Architecture'}
             </button>
-            <button onClick={() => router.push(`/blueprints`)}
+            <button type="button" onClick={() => router.push(`/blueprints`)}
               style={{ padding: '0.5rem 1rem', background: '#1e293b', color: '#e2e8f0', border: '1px solid #334155', borderRadius: 6, cursor: 'pointer' }}>
               Back
             </button>
@@ -182,7 +182,7 @@ export default function BlueprintDetailPage() {
             <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1rem' }}>{analysis.description}</p>
             <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem' }}>Recommendations</h4>
             <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#94a3b8', fontSize: '0.85rem' }}>
-              {analysis.recommendations.map((r, i) => <li key={i} style={{ marginBottom: '0.25rem' }}>{r}</li>)}
+              {analysis.recommendations.map((r) => <li key={r} style={{ marginBottom: '0.25rem' }}>{r}</li>)}
             </ul>
           </div>
         )}
@@ -191,15 +191,15 @@ export default function BlueprintDetailPage() {
           <h3 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>Node Graph</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             {snapshot.nodes.map((n) => (
-              <div key={n.id} onClick={() => setSelectedNode(selectedNode === n.id ? null : n.id)}
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: selectedNode === n.id ? '#0f172a' : 'transparent', borderRadius: 6, cursor: 'pointer' }}>
+              <button type="button" key={n.id} onClick={() => setSelectedNode(selectedNode === n.id ? null : n.id)}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: selectedNode === n.id ? '#0f172a' : 'transparent', borderRadius: 6, cursor: 'pointer', width: '100%', border: 'none', textAlign: 'left', color: 'inherit', font: 'inherit' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: nodeColors[n.type] ?? '#64748b' }} />
                   <span style={{ fontSize: '0.875rem' }}>{n.name}</span>
                   <span style={{ color: '#64748b', fontSize: '0.75rem' }}>{n.type}</span>
                 </div>
                 {n.path && <span style={{ color: '#64748b', fontSize: '0.75rem' }}>{n.path}</span>}
-              </div>
+              </button>
             ))}
           </div>
           {selectedNode && (
@@ -223,10 +223,10 @@ export default function BlueprintDetailPage() {
           <div style={{ background: '#1e293b', borderRadius: 8, padding: '1.5rem' }}>
             <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>Drift Detection</h3>
             <div style={{ marginBottom: '0.75rem' }}>
-              <label style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>Baseline Snapshot ID</label>
-              <input value={driftBaseline} onChange={(e) => setDriftBaseline(e.target.value)} placeholder="snapshot-id"
+              <label htmlFor="drift-baseline" style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>Baseline Snapshot ID</label>
+              <input id="drift-baseline" value={driftBaseline} onChange={(e) => setDriftBaseline(e.target.value)} placeholder="snapshot-id"
                 style={{ width: '100%', padding: '0.4rem', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', boxSizing: 'border-box', marginBottom: '0.5rem' }} />
-              <button onClick={handleDrift} disabled={!driftBaseline}
+              <button type="button" onClick={handleDrift} disabled={!driftBaseline}
                 style={{ padding: '0.4rem 1rem', background: driftBaseline ? '#f59e0b' : '#64748b', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, cursor: driftBaseline ? 'pointer' : 'not-allowed', fontSize: '0.85rem' }}>
                 Detect Drift
               </button>
@@ -236,7 +236,7 @@ export default function BlueprintDetailPage() {
                 {drift.map((f) => (
                   <div key={f.id} style={{ padding: '0.5rem', background: '#0f172a', borderRadius: 4, fontSize: '0.8rem' }}>
                     <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.25rem' }}>
-                      <span style={{ padding: '0.125rem 0.375rem', borderRadius: 3, fontSize: '0.7rem', background: (severityColors[f.severity] ?? '#64748b') + '22', color: severityColors[f.severity] ?? '#64748b' }}>
+                      <span style={{ padding: '0.125rem 0.375rem', borderRadius: 3, fontSize: '0.7rem', background: `${severityColors[f.severity] ?? '#64748b'}22`, color: severityColors[f.severity] ?? '#64748b' }}>
                         {f.severity}
                       </span>
                       <span style={{ color: '#64748b', fontSize: '0.7rem' }}>{f.rule}</span>
@@ -252,8 +252,8 @@ export default function BlueprintDetailPage() {
           <div style={{ background: '#1e293b', borderRadius: 8, padding: '1.5rem' }}>
             <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>Impact Analysis</h3>
             <div style={{ marginBottom: '0.75rem' }}>
-              <label style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>Target Node ID</label>
-              <input value={impactNode} onChange={(e) => setImpactNode(e.target.value)} placeholder="node-id"
+              <label htmlFor="impact-node" style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>Target Node ID</label>
+              <input id="impact-node" value={impactNode} onChange={(e) => setImpactNode(e.target.value)} placeholder="node-id"
                 style={{ width: '100%', padding: '0.4rem', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', boxSizing: 'border-box', marginBottom: '0.5rem' }} />
               <select value={impactChange} onChange={(e) => setImpactChange(e.target.value)}
                 style={{ width: '100%', padding: '0.4rem', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', marginBottom: '0.5rem' }}>
@@ -261,7 +261,7 @@ export default function BlueprintDetailPage() {
                 <option value="delete">Delete</option>
                 <option value="rename">Rename</option>
               </select>
-              <button onClick={handleImpact} disabled={!impactNode}
+              <button type="button" onClick={handleImpact} disabled={!impactNode}
                 style={{ padding: '0.4rem 1rem', background: impactNode ? '#3b82f6' : '#64748b', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, cursor: impactNode ? 'pointer' : 'not-allowed', fontSize: '0.85rem' }}>
                 Analyze Impact
               </button>
@@ -269,7 +269,7 @@ export default function BlueprintDetailPage() {
             {impact && (
               <div>
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                  <span style={{ padding: '0.25rem 0.5rem', borderRadius: 4, fontSize: '0.8rem', background: (riskColors[impact.risk] ?? '#64748b') + '22', color: riskColors[impact.risk] ?? '#64748b', fontWeight: 600 }}>
+                  <span style={{ padding: '0.25rem 0.5rem', borderRadius: 4, fontSize: '0.8rem', background: `${riskColors[impact.risk] ?? '#64748b'}22`, color: riskColors[impact.risk] ?? '#64748b', fontWeight: 600 }}>
                     {impact.risk.toUpperCase()} RISK
                   </span>
                   <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>{impact.target} &middot; {impact.change}</span>

@@ -29,7 +29,7 @@ describe('Auth Integration', () => {
 
     const row = await db.queryOne('SELECT * FROM users WHERE email = $1', [email]);
     expect(row).not.toBeNull();
-    expect(row!.name).toBe('Int Test');
+    expect(row?.name).toBe('Int Test');
   });
 
   itIfDb('rejects duplicate email', async () => {

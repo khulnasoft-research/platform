@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 
@@ -31,13 +31,7 @@ export default function PreviewsPage() {
   const [framework, setFramework] = useState('nextjs');
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
-    const token = localStorage.getItem('session_token');
-    if (!token) { router.replace('/login'); return; }
-    loadSessions();
-  }, [router]);
-
-  async function loadSessions() {
+  const loadSessions = useCallback(async () => {
     try {
       const res = await api.preview.list();
       setSessions(res.previews as PreviewSession[]);
@@ -49,7 +43,13 @@ export default function PreviewsPage() {
       }
       setError('Failed to load previews');
     } finally { setLoading(false); }
-  }
+  }, [router]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('session_token');
+    if (!token) { router.replace('/login'); return; }
+    loadSessions();
+  }, [router, loadSessions]);
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
@@ -123,13 +123,13 @@ export default function PreviewsPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {sessions.map((s) => (
-              <div key={s.id} onClick={() => router.push(`/previews/${s.id}`)}
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.9rem 1rem', background: '#1e293b', borderRadius: 8, cursor: 'pointer' }}>
+              <button type="button" key={s.id} onClick={() => router.push(`/previews/${s.id}`)}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.9rem 1rem', background: '#1e293b', borderRadius: 8, cursor: 'pointer', width: '100%', border: 'none', textAlign: 'left', color: 'inherit', font: 'inherit' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{s.framework}</span>
                     <span style={{ color: '#64748b', fontSize: '0.8rem' }}>{s.projectId.slice(0, 8)}&hellip;</span>
-                    <span style={{ padding: '0.15rem 0.5rem', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, background: (statusColors[s.status] ?? '#64748b') + '22', color: statusColors[s.status] ?? '#64748b' }}>
+                    <span style={{ padding: '0.15rem 0.5rem', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, background: `${statusColors[s.status] ?? '#64748b'}22`, color: statusColors[s.status] ?? '#64748b' }}>
                       {s.status}
                     </span>
                   </div>
@@ -138,12 +138,12 @@ export default function PreviewsPage() {
                   </p>
                 </div>
                 {(s.status === 'building' || s.status === 'running') && (
-                  <button onClick={(e) => { e.stopPropagation(); handleStop(s.id); }}
+                  <button type="button" onClick={(e) => { e.stopPropagation(); handleStop(s.id); }}
                     style={{ padding: '0.35rem 0.75rem', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, fontSize: '0.8rem', cursor: 'pointer' }}>
                     Stop
                   </button>
                 )}
-              </div>
+              </button>
             ))}
           </div>
         )}

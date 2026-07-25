@@ -25,12 +25,13 @@ export class ProcessBackend implements SandboxBackend {
     const timeout = setTimeout(() => controller.abort(), req.config.timeoutMs ?? 60000);
 
     try {
-      const child = spawn(req.command, req.args, {
+      // biome-ignore lint/suspicious/noExplicitAny: spawn result needs dynamic access
+      const child: any = spawn(req.command, req.args, {
         cwd: workDir,
         signal: controller.signal,
         env: { ...process.env, ...req.config.environmentVariables },
         stdio: ['pipe', 'pipe', 'pipe'],
-      }) as any;
+      });
 
       let stdout = '';
       let stderr = '';
@@ -48,7 +49,7 @@ export class ProcessBackend implements SandboxBackend {
         try {
           const status = execSync(`cat /proc/${child.pid}/status 2>/dev/null || echo ""`, { timeout: 2000 }).toString();
           const match = status.match(/VmPeak:\s+(\d+)/);
-          if (match) peakMemoryMb = Math.round(parseInt(match[1]!) / 1024);
+          if (match) peakMemoryMb = Math.round(Number(match[1]) / 1024);
         } catch {}
       }
 
@@ -77,12 +78,13 @@ export class ProcessBackend implements SandboxBackend {
     const events: SandboxLogEvent[] = [];
 
     try {
-      const child = spawn(req.command, req.args, {
+      // biome-ignore lint/suspicious/noExplicitAny: spawn result needs dynamic access
+      const child: any = spawn(req.command, req.args, {
         cwd: workDir,
         signal: controller.signal,
         env: { ...process.env, ...req.config.environmentVariables },
         stdio: ['pipe', 'pipe', 'pipe'],
-      }) as any;
+      });
 
       events.push({ timestamp: new Date().toISOString(), stream: 'system', message: `[pid ${child.pid}] ${req.command} ${req.args.join(' ')}` });
 

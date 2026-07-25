@@ -184,14 +184,20 @@ class AiGateway {
     for (const entry of this.usageLog) {
       const p = entry.provider;
       if (!stats.byProvider[p]) stats.byProvider[p] = { requests: 0, tokens: 0, costUsd: 0 };
+      // biome-ignore lint/style/noNonNullAssertion: guarded above
       stats.byProvider[p]!.requests++;
+      // biome-ignore lint/style/noNonNullAssertion: guarded above
       stats.byProvider[p]!.tokens += entry.inputTokens + entry.outputTokens;
+      // biome-ignore lint/style/noNonNullAssertion: guarded above
       stats.byProvider[p]!.costUsd += entry.costUsd;
 
       const t = entry.tier;
       if (!stats.byTier[t]) stats.byTier[t] = { requests: 0, tokens: 0, costUsd: 0 };
+      // biome-ignore lint/style/noNonNullAssertion: guarded above
       stats.byTier[t]!.requests++;
+      // biome-ignore lint/style/noNonNullAssertion: guarded above
       stats.byTier[t]!.tokens += entry.inputTokens + entry.outputTokens;
+      // biome-ignore lint/style/noNonNullAssertion: guarded above
       stats.byTier[t]!.costUsd += entry.costUsd;
     }
 
@@ -348,7 +354,6 @@ class AiGateway {
           break;
         } catch {
           if (provider !== route.provider) fallbackChain.push(provider);
-          continue;
         }
       }
 

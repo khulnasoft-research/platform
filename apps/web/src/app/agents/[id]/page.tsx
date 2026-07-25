@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 
@@ -53,13 +53,7 @@ export default function TaskDetailPage() {
   const [planning, setPlanning] = useState(false);
   const [showArtifact, setShowArtifact] = useState<string | null>(null);
 
-  useEffect(() => {
-    const token = localStorage.getItem('session_token');
-    if (!token) { router.replace('/login'); return; }
-    loadTask();
-  }, [router]);
-
-  async function loadTask() {
+  const loadTask = useCallback(async () => {
     try {
       const res = await api.tasks.get(params.id as string);
       setTask(res as TaskDetail);
@@ -77,7 +71,13 @@ export default function TaskDetailPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [router, params]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('session_token');
+    if (!token) { router.replace('/login'); return; }
+    loadTask();
+  }, [router, loadTask]);
 
   async function handleCreatePlan() {
     setPlanning(true);
@@ -150,13 +150,13 @@ export default function TaskDetailPage() {
 
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
             {!task.plan && task.status === 'queued' && (
-              <button onClick={handleCreatePlan} disabled={planning}
+              <button type="button" onClick={handleCreatePlan} disabled={planning}
                 style={{ padding: '0.5rem 1rem', background: planning ? '#64748b' : '#8b5cf6', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, cursor: planning ? 'not-allowed' : 'pointer' }}>
                 {planning ? 'Planning...' : 'Create Plan'}
               </button>
             )}
             {(task.status === 'queued' || task.status === 'planning' || task.status === 'executing') && (
-              <button onClick={handleCancel}
+              <button type="button" onClick={handleCancel}
                 style={{ padding: '0.5rem 1rem', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>
                 Cancel Task
               </button>
@@ -199,11 +199,11 @@ export default function TaskDetailPage() {
                   </span>
                   {g.status === 'pending' && (
                     <div style={{ display: 'flex', gap: '0.25rem' }}>
-                      <button onClick={() => handleApproveGate(g.id, true)}
+                      <button type="button" onClick={() => handleApproveGate(g.id, true)}
                         style={{ padding: '0.25rem 0.75rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: 4, fontSize: '0.8rem', cursor: 'pointer' }}>
                         Approve
                       </button>
-                      <button onClick={() => handleApproveGate(g.id, false)}
+                      <button type="button" onClick={() => handleApproveGate(g.id, false)}
                         style={{ padding: '0.25rem 0.75rem', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 4, fontSize: '0.8rem', cursor: 'pointer' }}>
                         Reject
                       </button>
@@ -220,11 +220,11 @@ export default function TaskDetailPage() {
             <h3 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>Artifacts</h3>
             {task.result.artifacts.map((a) => (
               <div key={a.path}>
-                <div onClick={() => setShowArtifact(showArtifact === a.path ? null : a.path)}
-                  style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: '#0f172a', borderRadius: 6, marginBottom: '0.25rem', cursor: 'pointer' }}>
+                <button type="button" onClick={() => setShowArtifact(showArtifact === a.path ? null : a.path)}
+                  style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: '#0f172a', borderRadius: 6, marginBottom: '0.25rem', cursor: 'pointer', border: 'none', width: '100%', textAlign: 'left', color: 'inherit', font: 'inherit' }}>
                   <span style={{ fontSize: '0.875rem' }}>{a.path}</span>
                   <span style={{ color: '#64748b', fontSize: '0.8rem' }}>{a.type}</span>
-                </div>
+                </button>
                 {showArtifact === a.path && (
                   <pre style={{ background: '#0f172a', padding: '0.75rem', borderRadius: 6, margin: '0 0 0.5rem', fontSize: '0.8rem', color: '#94a3b8', overflow: 'auto', maxHeight: 300 }}>
                     {a.content}

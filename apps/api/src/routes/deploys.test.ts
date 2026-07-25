@@ -13,8 +13,8 @@ describe('Providers', () => {
 
     const body = await res.json();
     expect(body.providers.length).toBe(5);
-    expect(body.providers[0]!.name).toBe('vercel');
-    expect(body.providers[0]!.type).toBe('serverless');
+    expect(body.providers[0]?.name).toBe('vercel');
+    expect(body.providers[0]?.type).toBe('serverless');
   });
 
   it('gets provider details', async () => {
@@ -65,7 +65,7 @@ describe('Environments CRUD', () => {
 
     const body = await res.json();
     expect(body.environments).toHaveLength(1);
-    expect(body.environments[0]!.id).toBe(envId);
+    expect(body.environments[0]?.id).toBe(envId);
   });
 
   it('requires project_id for list', async () => {
@@ -142,7 +142,7 @@ describe('Deployments lifecycle', () => {
 
     const body = await res.json();
     expect(body.deployments.length).toBe(1);
-    expect(body.deployments[0]!.id).toBe(deployId);
+    expect(body.deployments[0]?.id).toBe(deployId);
   });
 
   it('transitions to live after build', { timeout: 15000 }, async () => {
@@ -155,7 +155,7 @@ describe('Deployments lifecycle', () => {
     expect(body.status).toBe('live');
     expect(body.logs.length).toBeGreaterThan(5);
 
-    const hasBuildLog = body.logs.some((l: any) => l.message.toLowerCase().includes('installed'));
+    const hasBuildLog = body.logs.some((l: { message: string }) => l.message.toLowerCase().includes('installed'));
     expect(hasBuildLog).toBe(true);
   });
 
@@ -175,7 +175,7 @@ describe('Deployments lifecycle', () => {
 
     const body = await res.json();
     expect(body.logs.length).toBeGreaterThan(0);
-    expect(body.logs[0]!.source).toBeDefined();
+    expect(body.logs[0]?.source).toBeDefined();
   });
 
   it('rolls back a live deployment', async () => {

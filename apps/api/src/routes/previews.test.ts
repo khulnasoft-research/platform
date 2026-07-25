@@ -55,7 +55,7 @@ describe('Preview Sessions CRUD', () => {
 
     const body = await res.json();
     expect(body.previews.length).toBe(1);
-    expect(body.previews[0]!.id).toBe(sessionId);
+    expect(body.previews[0]?.id).toBe(sessionId);
   });
 
   it('gets a session by id', async () => {
@@ -116,8 +116,8 @@ describe('Preview Session lifecycle', () => {
 
     const body = await res.json();
     expect(body.logs.length).toBeGreaterThan(0);
-    expect(body.logs[0]!.message).toBeDefined();
-    expect(body.logs[0]!.level).toBeDefined();
+    expect(body.logs[0]?.message).toBeDefined();
+    expect(body.logs[0]?.level).toBeDefined();
   });
 
   it('filters logs by since timestamp', async () => {
@@ -188,7 +188,7 @@ describe('Preview file management', () => {
 
     const body = await res.json();
     expect(body.files).toHaveLength(3);
-    const pageFile = body.files.find((f: any) => f.path === 'src/app/page.tsx');
+    const pageFile = body.files.find((f: { path: string; content: string }) => f.path === 'src/app/page.tsx');
     expect(pageFile).toBeDefined();
     expect(pageFile.content).toContain('Updated');
   });

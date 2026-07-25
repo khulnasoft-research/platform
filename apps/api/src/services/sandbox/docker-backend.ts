@@ -83,7 +83,8 @@ export class DockerBackend implements SandboxBackend {
     const events: SandboxLogEvent[] = [];
 
     try {
-      const child = spawn('docker', [
+      // biome-ignore lint/suspicious/noExplicitAny: spawn result needs dynamic access
+      const child: any = spawn('docker', [
         'run', '--rm',
         '--name', containerName,
         `--memory=${req.config.memoryLimitMb ?? 512}m`,
@@ -95,7 +96,7 @@ export class DockerBackend implements SandboxBackend {
         '-w', '/workspace',
         DEFAULT_IMAGE,
         req.command, ...req.args,
-      ], { stdio: ['pipe', 'pipe', 'pipe'] }) as any;
+      ], { stdio: ['pipe', 'pipe', 'pipe'] });
 
       events.push({ timestamp: new Date().toISOString(), stream: 'system', message: `Container ${containerName} started` });
 

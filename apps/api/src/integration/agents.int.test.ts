@@ -33,8 +33,8 @@ describe('Agents Integration', () => {
 
     const row = await db.queryOne('SELECT * FROM tasks WHERE id = $1', [task.id]);
     expect(row).not.toBeNull();
-    expect(row!.goal).toBe('int-test-create-task');
-    expect(row!.assignee).toBe('planner');
+    expect(row?.goal).toBe('int-test-create-task');
+    expect(row?.assignee).toBe('planner');
   });
 
   itIfDb('lists tasks from DB', async () => {
@@ -48,7 +48,7 @@ describe('Agents Integration', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body.tasks)).toBe(true);
-    const match = body.tasks.find((t: any) => t.goal === 'int-test-list-task');
+    const match = body.tasks.find((t: { goal: string }) => t.goal === 'int-test-list-task');
     expect(match).toBeDefined();
   });
 
@@ -66,7 +66,7 @@ describe('Agents Integration', () => {
     expect(body.status).toBe('cancelled');
 
     const row = await db.queryOne('SELECT status FROM tasks WHERE id = $1', [task.id]);
-    expect(row!.status).toBe('cancelled');
+    expect(row?.status).toBe('cancelled');
   });
 
   itIfDb('generates plan and persists to DB', async () => {
@@ -83,7 +83,7 @@ describe('Agents Integration', () => {
     expect(plan.steps).toBeDefined();
 
     const row = await db.queryOne('SELECT plan FROM tasks WHERE id = $1', [task.id]);
-    expect(row!.plan).not.toBeNull();
+    expect(row?.plan).not.toBeNull();
   });
 
   itIfDb('finds task by ID from DB', async () => {

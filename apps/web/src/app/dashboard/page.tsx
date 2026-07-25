@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 
@@ -17,16 +17,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const token = localStorage.getItem('session_token');
-    if (!token) {
-      router.replace('/login');
-      return;
-    }
-    loadProjects();
-  }, [router]);
-
-  async function loadProjects() {
+  const loadProjects = useCallback(async () => {
     try {
       const res = await api.projects.list(
         '00000000-0000-0000-0000-000000000001',
@@ -42,7 +33,16 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [router]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('session_token');
+    if (!token) {
+      router.replace('/login');
+      return;
+    }
+    loadProjects();
+  }, [router, loadProjects]);
 
   function handleLogout() {
     localStorage.removeItem('session_token');
@@ -89,6 +89,7 @@ export default function DashboardPage() {
           <a href="/deploy" style={{ color: '#94a3b8', fontSize: '0.875rem', textDecoration: 'none' }}>Deploy</a>
         </div>
         <button
+          type="button"
           onClick={handleLogout}
           style={{
             padding: '0.5rem 1rem',
@@ -114,6 +115,7 @@ export default function DashboardPage() {
         >
           <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Projects</h2>
           <button
+            type="button"
             onClick={handleCreateProject}
             style={{
               padding: '0.5rem 1.25rem',

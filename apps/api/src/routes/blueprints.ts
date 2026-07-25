@@ -51,16 +51,16 @@ const impactSchema = z.object({
   change: z.enum(['modify', 'delete', 'rename']),
 });
 
-function toSnapshot(row: any): BlueprintSnapshot {
+function toSnapshot(row: Record<string, unknown>): BlueprintSnapshot {
   return {
-    id: row.id,
-    projectId: row.project_id,
-    commitSha: row.commit_sha,
-    branch: row.branch,
-    nodes: row.nodes ?? [],
-    edges: row.edges ?? [],
-    metadata: row.metadata,
-    createdAt: row.created_at,
+    id: row.id as string,
+    projectId: row.project_id as string,
+    commitSha: row.commit_sha as string,
+    branch: row.branch as string,
+    nodes: (row.nodes as BlueprintSnapshot['nodes']) ?? [],
+    edges: (row.edges as BlueprintSnapshot['edges']) ?? [],
+    metadata: row.metadata as BlueprintSnapshot['metadata'],
+    createdAt: row.created_at as string,
   };
 }
 

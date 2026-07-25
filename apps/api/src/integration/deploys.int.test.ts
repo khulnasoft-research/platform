@@ -34,7 +34,7 @@ describe('Deploy Integration', () => {
 
     const row = await db.queryOne('SELECT * FROM deployment_environments WHERE id = $1', [env.id]);
     expect(row).not.toBeNull();
-    expect(row!.name).toBe('int-test-env');
+    expect(row?.name).toBe('int-test-env');
   });
 
   itIfDb('lists environments from DB', async () => {
@@ -42,7 +42,7 @@ describe('Deploy Integration', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body.environments)).toBe(true);
-    const match = body.environments.find((e: any) => e.name === 'int-test-env');
+    const match = body.environments.find((e: { name: string }) => e.name === 'int-test-env');
     expect(match).toBeDefined();
   });
 
@@ -85,7 +85,7 @@ describe('Deploy Integration', () => {
     expect(res.status).toBe(200);
 
     const row = await db.queryOne('SELECT env_vars FROM deployment_environments WHERE id = $1', [env.id]);
-    expect(row!.env_vars).toContain('KEY=value');
+    expect(row?.env_vars).toContain('KEY=value');
   });
 
   itIfDb('removes env vars in DB', async () => {
@@ -115,8 +115,8 @@ describe('Deploy Integration', () => {
     expect(res.status).toBe(200);
 
     const row = await db.queryOne('SELECT env_vars FROM deployment_environments WHERE id = $1', [env.id]);
-    expect(row!.env_vars).not.toContain('KEY=value');
-    expect(row!.env_vars).toContain('OTHER=val');
+    expect(row?.env_vars).not.toContain('KEY=value');
+    expect(row?.env_vars).toContain('OTHER=val');
   });
 
   itIfDb('deletes environment from DB', async () => {
@@ -167,7 +167,7 @@ describe('Deploy Integration', () => {
 
     const row = await db.queryOne('SELECT * FROM deployments WHERE id = $1', [dep.id]);
     expect(row).not.toBeNull();
-    expect(row!.commit_sha).toBe('int-test-deploy');
+    expect(row?.commit_sha).toBe('int-test-deploy');
   });
 
   itIfDb('lists deployments from DB', async () => {
@@ -175,7 +175,7 @@ describe('Deploy Integration', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body.deployments)).toBe(true);
-    const match = body.deployments.find((d: any) => d.commitSha === 'int-test-deploy');
+    const match = body.deployments.find((d: { commitSha: string }) => d.commitSha === 'int-test-deploy');
     expect(match).toBeDefined();
   });
 
@@ -202,7 +202,7 @@ describe('Deploy Integration', () => {
         provider: 'vercel',
       }),
     });
-    let dep = await createRes.json();
+    const dep = await createRes.json();
 
     dep.status = 'live';
     await db.query(`UPDATE deployments SET status = 'live' WHERE id = $1`, [dep.id]);
@@ -211,6 +211,6 @@ describe('Deploy Integration', () => {
     expect(res.status).toBe(200);
 
     const row = await db.queryOne('SELECT status FROM deployments WHERE id = $1', [dep.id]);
-    expect(row!.status).toBe('rolled-back');
+    expect(row?.status).toBe('rolled-back');
   });
 });

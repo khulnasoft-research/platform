@@ -69,7 +69,7 @@ describe('Projects CRUD', () => {
 
     const body = await res.json();
     expect(body.projects).toHaveLength(1);
-    expect(body.projects[0]!.id).toBe(projectId);
+    expect(body.projects[0]?.id).toBe(projectId);
   });
 
   it('gets a project by id', async () => {

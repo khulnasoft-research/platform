@@ -22,7 +22,7 @@ beforeAll(async () => {
      VALUES (gen_random_uuid(), 'Int Test Org', 'int-test-org', 'free', now())
      RETURNING id`,
   );
-  orgId = row!.id;
+  orgId = row?.id ?? '';
 
   const email = `int-test-proj-${Date.now()}@example.com`;
   const reg = await authService.register({ email, password: 'password123', name: 'Proj Test' });
@@ -45,7 +45,7 @@ describe('Projects Integration', () => {
 
     const row = await db.queryOne('SELECT * FROM projects WHERE id = $1', [project.id]);
     expect(row).not.toBeNull();
-    expect(row!.name).toBe('int-test-project');
+    expect(row?.name).toBe('int-test-project');
   });
 
   itIfDb('lists projects from DB', async () => {
@@ -55,7 +55,7 @@ describe('Projects Integration', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body.projects)).toBe(true);
-    const match = body.projects.find((p: any) => p.name === 'int-test-project');
+    const match = body.projects.find((p: { name: string }) => p.name === 'int-test-project');
     expect(match).toBeDefined();
   });
 
@@ -78,8 +78,8 @@ describe('Projects Integration', () => {
     expect(res.status).toBe(200);
 
     const row = await db.queryOne('SELECT * FROM projects WHERE id = $1', [project.id]);
-    expect(row!.name).toBe('int-test-updated');
-    expect(row!.description).toBe('Updated desc');
+    expect(row?.name).toBe('int-test-updated');
+    expect(row?.description).toBe('Updated desc');
   });
 
   itIfDb('soft-deletes project in DB', async () => {
@@ -100,6 +100,6 @@ describe('Projects Integration', () => {
     expect(res.status).toBe(204);
 
     const row = await db.queryOne('SELECT * FROM projects WHERE id = $1', [project.id]);
-    expect(row!.archived_at).not.toBeNull();
+    expect(row?.archived_at).not.toBeNull();
   });
 });

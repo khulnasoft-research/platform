@@ -49,8 +49,8 @@ describe('Agent Tasks', () => {
 
     const body = await res.json();
     expect(body.approvalGates).toHaveLength(2);
-    expect(body.approvalGates[0]!.type).toBe('destructive');
-    expect(body.approvalGates[0]!.status).toBe('pending');
+    expect(body.approvalGates[0]?.type).toBe('destructive');
+    expect(body.approvalGates[0]?.status).toBe('pending');
     expect(body.status).toBe('waiting');
     expect(body.plan).toBeDefined();
     expect(body.result).toBeNull();
@@ -108,8 +108,8 @@ describe('Agent Runtime introspection', () => {
 
     const body = await res.json();
     expect(body.agents.length).toBeGreaterThan(0);
-    expect(body.agents[0]!.type).toBe('architect');
-    expect(body.agents[0]!.tools).toBeDefined();
+    expect(body.agents[0]?.type).toBe('architect');
+    expect(body.agents[0]?.tools).toBeDefined();
   });
 
   it('lists available tools', async () => {
@@ -118,8 +118,8 @@ describe('Agent Runtime introspection', () => {
 
     const body = await res.json();
     expect(body.tools.length).toBeGreaterThan(0);
-    expect(body.tools[0]!.name).toBe('read-files');
-    expect(body.tools[0]!.description).toBeDefined();
+    expect(body.tools[0]?.name).toBe('read-files');
+    expect(body.tools[0]?.description).toBeDefined();
   });
 });
 
@@ -160,7 +160,7 @@ describe('Task planning', () => {
     });
     const task = await res.json();
 
-    const gateId = task.approvalGates[0]!.id;
+    const gateId = task.approvalGates[0]?.id;
 
     const approveRes = await app.request(
       `/agents/tasks/${task.id}/approve/${gateId}`,

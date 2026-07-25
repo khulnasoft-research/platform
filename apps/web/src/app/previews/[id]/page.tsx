@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, useRef, type FormEvent } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 
@@ -27,6 +27,16 @@ interface PreviewMetrics {
   uptimeSeconds: number;
 }
 
+interface PreviewSession {
+  id: string;
+  status: string;
+  framework: string;
+  url: string;
+  createdAt: string;
+  buildLogs: BuildLog[];
+  files: PreviewFile[];
+}
+
 const statusColors: Record<string, string> = {
   building: '#f59e0b', running: '#3b82f6', ready: '#10b981',
   error: '#ef4444', stopped: '#64748b',
@@ -39,7 +49,7 @@ const logLevelColors: Record<string, string> = {
 export default function PreviewDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<PreviewSession | null>(null);
   const [logs, setLogs] = useState<BuildLog[]>([]);
   const [files, setFiles] = useState<PreviewFile[]>([]);
   const [metrics, setMetrics] = useState<PreviewMetrics | null>(null);
@@ -50,18 +60,38 @@ export default function PreviewDetailPage() {
   const [newFileType, setNewFileType] = useState('source');
   const [activeTab, setActiveTab] = useState<'logs' | 'files' | 'metrics'>('logs');
   const logsEndRef = useRef<HTMLDivElement>(null);
+  const metricsIntervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
-  useEffect(() => {
+  const startMetricsPoll = useCallback((pollId: string) => {
+    metricsIntervalRef.current = setInterval(async () => {
+      try {
+        const m = await api.preview.metrics(pollId);
+        setMetrics(m);
+      } catch {}
+    }, 3000);
+  }, []);
+
+  const startSSE = useCallback((sseId: string) => {
     const token = localStorage.getItem('session_token');
-    if (!token) { router.replace('/login'); return; }
-    if (params.id) loadSession();
-  }, [router]);
+    const evtSource = new EventSource(`/api/previews/${sseId}/logs/stream?token=${token}`);
+    evtSource.addEventListener('log', (e) => {
+      try { setLogs((prev) => [...prev, JSON.parse(e.data)]); } catch {}
+    });
+    evtSource.addEventListener('status', (e) => {
+      try {
+        const { status } = JSON.parse(e.data);
+        setSession((prev) => prev ? { ...prev, status } : prev);
+        if (status === 'ready' || status === 'error' || status === 'stopped') {
+          evtSource.close();
+          clearInterval(metricsIntervalRef.current);
+        }
+      } catch {}
+    });
+    evtSource.onerror = () => evtSource.close();
+    return () => evtSource.close();
+  }, []);
 
-  useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs]);
-
-  async function loadSession() {
+  const loadSession = useCallback(async () => {
     const id = String(params.id);
     try {
       const res = await api.preview.get(id);
@@ -80,44 +110,23 @@ export default function PreviewDetailPage() {
       if (err instanceof ApiError && err.status === 404) setError('Preview session not found');
       else setError('Failed to load preview');
     } finally { setLoading(false); }
-  }
+  }, [params.id, startSSE, startMetricsPoll]);
 
-  function startSSE(id: string) {
+  useEffect(() => {
     const token = localStorage.getItem('session_token');
-    const evtSource = new EventSource(`/api/previews/${id}/logs/stream?token=${token}`);
-    evtSource.addEventListener('log', (e) => {
-      try { setLogs((prev) => [...prev, JSON.parse(e.data)]); } catch {}
-    });
-    evtSource.addEventListener('status', (e) => {
-      try {
-        const { status } = JSON.parse(e.data);
-        setSession((prev: any) => prev ? { ...prev, status } : prev);
-        if (status === 'ready' || status === 'error' || status === 'stopped') {
-          evtSource.close();
-          clearInterval(metricsIntervalRef.current);
-        }
-      } catch {}
-    });
-    evtSource.onerror = () => evtSource.close();
-    return () => evtSource.close();
-  }
+    if (!token) { router.replace('/login'); return; }
+    if (params.id) loadSession();
+  }, [router, loadSession, params.id]);
 
-  const metricsIntervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
-
-  function startMetricsPoll(id: string) {
-    metricsIntervalRef.current = setInterval(async () => {
-      try {
-        const m = await api.preview.metrics(id);
-        setMetrics(m);
-      } catch {}
-    }, 3000);
-  }
+  useEffect(() => {
+    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  });
 
   async function handleStop() {
     if (!session) return;
     try {
       const res = await api.preview.stop(session.id);
-      setSession((prev: any) => prev ? { ...prev, status: res.status } : prev);
+      setSession((prev) => prev ? { ...prev, status: res.status } : prev);
       clearInterval(metricsIntervalRef.current);
     } catch { setError('Failed to stop preview'); }
   }
@@ -162,11 +171,11 @@ export default function PreviewDetailPage() {
               </p>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <span style={{ padding: '0.25rem 0.75rem', borderRadius: 6, fontSize: '0.875rem', background: (statusColors[session.status] ?? '#64748b') + '22', color: statusColors[session.status] ?? '#64748b', fontWeight: 600 }}>
+              <span style={{ padding: '0.25rem 0.75rem', borderRadius: 6, fontSize: '0.875rem', background: `${statusColors[session.status] ?? '#64748b'}22`, color: statusColors[session.status] ?? '#64748b', fontWeight: 600 }}>
                 {session.status}
               </span>
               {(session.status === 'building' || session.status === 'running') && (
-                <button onClick={handleStop}
+                <button type="button" onClick={handleStop}
                   style={{ padding: '0.35rem 0.75rem', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, fontSize: '0.8rem', cursor: 'pointer' }}>
                   Stop
                 </button>
@@ -183,7 +192,7 @@ export default function PreviewDetailPage() {
 
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
           {(['logs', 'files', 'metrics'] as const).map((tab) => (
-            <button key={tab} onClick={() => setActiveTab(tab)}
+            <button type="button" key={tab} onClick={() => setActiveTab(tab)}
               style={{ padding: '0.45rem 1.25rem', background: activeTab === tab ? '#3b82f6' : '#1e293b', color: '#e2e8f0', border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize' }}>
               {tab}
             </button>
@@ -199,8 +208,8 @@ export default function PreviewDetailPage() {
               <p style={{ color: '#64748b', fontSize: '0.85rem' }}>No logs yet.</p>
             ) : (
               <div style={{ maxHeight: 400, overflow: 'auto' }}>
-                {logs.map((l, i) => (
-                  <div key={i} style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', fontFamily: 'monospace', padding: '0.1rem 0' }}>
+                {logs.map((l) => (
+                  <div key={`${l.timestamp}-${l.level}`} style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', fontFamily: 'monospace', padding: '0.1rem 0' }}>
                     <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>{new Date(l.timestamp).toLocaleTimeString()}</span>
                     <span style={{ color: logLevelColors[l.level] ?? '#94a3b8', minWidth: '3rem' }}>[{l.level}]</span>
                     <span style={{ color: l.source === 'build' ? '#93c5fd' : '#e2e8f0' }}>{l.message}</span>

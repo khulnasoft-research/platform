@@ -22,7 +22,7 @@ function getPool(): pg.Pool | null {
 }
 
 export const db = {
-  async query<T = any>(text: string, params?: unknown[]): Promise<T[] | null> {
+  async query<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<T[] | null> {
     const p = getPool();
     if (!p) return null;
 
@@ -35,7 +35,7 @@ export const db = {
     }
   },
 
-  async queryOne<T = any>(text: string, params?: unknown[]): Promise<T | null> {
+  async queryOne<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<T | null> {
     const rows = await this.query<T>(text, params);
     return rows && rows.length > 0 ? (rows[0] as T) : null;
   },
